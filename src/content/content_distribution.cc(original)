@@ -1,0 +1,656 @@
+/*
+ * ccnSim is a scalable chunk-level simulator for Content Centric
+ * Networks (CCN), that we developed in the context of ANR Connect
+ * (http://www.anr-connect.org/)
+ *
+ * People:
+ *    Giuseppe Rossini (lead developer, mailto giuseppe.rossini@enst.fr)
+ *    Raffaele Chiocchetti (developer, mailto raffaele.chiocchetti@gmail.com)
+ *    Dario Rossi (occasional debugger, mailto dario.rossi@enst.fr)
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+#include "ccnsim.h"
+#include "content_distribution.h"
+#include "zipf.h"
+#include <algorithm>
+#include <boost/unordered_map.hpp>
+#include <cstdlib>
+#include <ctime>
+
+//<aa>
+#include <error_handling.h>
+//</aa>
+
+Register_Class(content_distribution);
+int num_of_vr=100;
+boost::unordered_map<int,int> cacheini;
+boost::unordered_map<int,int> Tsize;
+boost::unordered_map<int,int> rcacheini;
+boost::unordered_map<int,int> testmap;
+boost::unordered_map<int,int>  CH0;
+boost::unordered_map<int,int>  CH1;
+boost::unordered_map<int,int>  CH2;
+boost::unordered_map<int,int>  CH3;
+
+
+vector<file> content_distribution::catalog;
+zipf_distribution  content_distribution::zipf;
+
+name_t  content_distribution::stabilization_bulk = 0;
+name_t  content_distribution::perfile_bulk = 0;
+name_t  content_distribution::cut_off = 0;
+int  *content_distribution::repositories = 0;
+//<aa>
+double  *content_distribution::repo_prices = 0;
+//</aa>
+int  *content_distribution::clients = 0;
+int  *content_distribution::total_replicas_p;
+vector<double>  *content_distribution::repo_popularity_p;
+
+
+
+
+//Initialize the catalog, the repository, and distributes contents among them.
+void content_distribution::initialize(){
+
+    double coff = par("cut_off");
+
+    nodes = getAncestorPar("n");
+    num_repos = getAncestorPar("num_repos"); //Number of repositories (specifically ccn_node(s) which have a repository connected to them)
+    num_clients = getAncestorPar ("num_clients");
+    alpha = par("alpha");
+    q = par ("q");
+    cardF = par("objects"); //Number of files within the system
+    F = par("file_size"); //Average chunk size
+    replicas = getAncestorPar("replicas");
+
+	//<aa>
+	// CHECK_INPUT{
+		if (cardF == 0){
+	        std::stringstream ermsg; 
+			ermsg<<"The catalog size is 0. Are you sure you intended this?If you are sure, please "<<
+				" disable this exception";
+			severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+		}
+	// }CHECK_INPUT
+	//</aa>
+
+
+    content_distribution::total_replicas_p = (int*) malloc ( sizeof(int) );
+	*(content_distribution::total_replicas_p) = 0;
+
+
+    catalog.resize(cardF+1); // initialize content catalog
+
+
+    //
+    //Zipf initialization
+    //
+    zipf = zipf_distribution(alpha,q,cardF);
+    zipf.zipf_initialize();
+
+    cut_off = zipf.value(coff);
+    stabilization_bulk = zipf.value(0.9);
+    perfile_bulk = zipf.value(0.5);
+
+    char name[15];
+    //
+    //Repositories initialization
+    //
+    cStringTokenizer tokenizer(getAncestorPar("node_repos"),",");
+    repositories = init_repos(tokenizer.asIntVector());
+
+	//<aa>
+    repo_prices = init_repo_prices();
+	//</aa>
+
+
+    //Useful for statitics: write out the name of each repository within the network
+    for (int i = 0; i < num_repos; i++){
+		sprintf(name,"repo-%d",i);
+		recordScalar(name,repositories[i]);
+    }
+
+    //
+    //Clients initialization
+    //
+    if (num_clients < 0) 
+		//If num_clients is < 0 all nodes of the network are clients
+		num_clients = nodes;
+    tokenizer = cStringTokenizer(getAncestorPar("node_clients"),",");
+    clients = init_clients (tokenizer.asIntVector());
+
+    //Useful for statitics: write out the name of each client within the network
+    for (int i = 0; i < num_clients; i++){
+		sprintf(name,"client-%d",i);
+		recordScalar(name,clients[i]);
+    }
+
+	initialize_repo_popularity();
+	//</aa>
+
+    //
+    //Content initialization
+    //
+    cout<<"Start content initialization..."<<endl;
+    init_content();
+    cout<<"Content initialized"<<endl;
+
+	//<aa>
+	finalize_total_replica();
+	//</aa>
+    populate_cache();
+    weighted_cache();
+    populate_CHT();
+    cout<<"CHT initialized"<<endl;
+}
+
+//<aa>
+void content_distribution::initialize_repo_popularity()
+{
+	// By default, the repo popularity is not computed
+	repo_popularity_p = NULL;
+}
+//</aa>
+
+//<aa>
+void content_distribution::finalize_total_replica(){
+
+	*total_replicas_p = cardF*replicas;
+}
+
+#ifdef SEVERE_DEBUG
+void content_distribution::verify_replica_number(){
+	if (*total_replicas_p != cardF*replicas)
+	{
+        std::stringstream ermsg; 
+		ermsg<<"Ctlg size="<< cardF <<". total_replica="<<*total_replicas_p;
+	    severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+	}
+}
+#endif
+//</aa>
+
+
+/* 
+ * Generate all possible combinations of binary strings of a given length with
+ * a given number of bits set.
+*/
+vector<int> content_distribution::binary_strings(int num_ones,int len){
+
+	//<aa> CHECK INPUT
+		#ifdef SEVERE_DEBUG
+			if (num_ones <= 0){
+				std::stringstream ermsg; 
+				ermsg<<"You want a number of object replicas equal to "<<
+					num_ones<<". It is not valid";
+				severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+			}
+		#endif
+	//</aa>
+
+    vector<int> bins;
+    int ones,bin;
+    for (int i =1;i< (1<<len);i++){
+		bin = i; //<aa> It is the binary string //</aa>
+		ones = 0;
+		//Count the number of ones
+		while (bin){
+			ones += bin & 1;
+			bin >>= 1;
+		}
+		//If the ones are equal to the number of repositories this is a good
+		//binary number
+		if (ones == num_ones)
+			bins.push_back(i);
+
+		//<aa>
+		#ifdef SEVERE_DEBUG
+			if (bins.size() == 0){
+				std::stringstream ermsg; 
+				ermsg<<"No binary strings were produced. The number of replicas for "<<
+					"each content should be "<<num_ones;
+				severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+			}
+		#endif
+		//</aa>
+    }
+    return bins;
+
+}
+
+//<aa> Return a string of bit representing an object placement. 
+// There is a 1 in the i-th position iff the object is served by the i-th repo
+int content_distribution::choose_repos (int object_index ){
+	int repo_string = repo_strings[intrand(repo_strings.size())];
+
+	#ifdef SEVERE_DEBUG
+	int num_1_bits =  __builtin_popcount (repo_string); //http://stackoverflow.com/a/109069
+												// Number of bits set to 1 (corresponding 
+												// to the number of repositories this object was 
+												// assigned to)
+	if (num_1_bits != replicas){
+		std::stringstream ermsg; 
+		ermsg<<"an object has been assigned to "<< num_1_bits <<" repos while replicas="<<replicas;
+	    severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+	}
+
+	*total_replicas_p += num_1_bits;
+	#endif
+
+	return repo_string;
+}
+//</aa>
+
+//Store information about the content:
+void content_distribution::init_content()
+{
+	// <aa>
+	// In repo_card we count how many obects each repo is storing
+	// <aa>
+	vector<int> repo_card(num_repos,0); 
+
+    //As the repositories are represented as a string of bits, the function
+    //binary_string is used for generating binary strings of length num_repos
+    //with exactly replicas ones
+	//<aa> where "replicas" is the number of replicas for each object. Each string 
+	// represents a replica
+	// placement of a certain object among the repositories. Given a single string, 
+	// a 1 in the i-th position means that a replica of that object is placed in the 
+	// i-th repository </aa>
+    repo_strings = binary_strings(replicas, num_repos);
+
+	//<aa>cardF indicates how many objects there are into the catalog</aa>
+    for (int d = 1; d <= cardF; d++)
+    {
+    	//<aa>d is a content </aa>
+		//Reset the information field of a given content
+		__info(d) = 0;
+
+		//<aa> F is the size of a file</aa>
+		if (F > 1){
+			//Set the file size (distributed like a geometric)
+			filesize_t s = geometric( 1.0 / F ) + 1;
+			__ssize ( d, s );
+		}else 
+			__ssize( d , 1);
+
+		// <aa>
+		vector<int> chosen_repos; 
+		// </aa>
+
+		//Set the repositories
+		if (num_repos==1){
+			__srepo ( d , 1 );
+			// <aa> Compute the chosen_repo
+			chosen_repos.push_back(0);
+			// </aa>
+		} else {
+			// <aa> Choose a replica placement among all the possibile ones. 
+			// 		repos is a replica placement </aa>				
+			repo_t repos = choose_repos(d); //<aa>This method had no input parameters before</aa>
+			__srepo (d ,repos);
+
+			// <aa> Compute the chosen_repos
+			repo_t repo_extracted = __repo(d);
+			unsigned k = 0;
+			while (repo_extracted)
+			{	if (repo_extracted & 1) 
+					chosen_repos.push_back(k);
+				repo_extracted >>= 1;
+				k++;
+			}
+
+//			#ifdef SEVERE_DEBUG
+//				int object_to_test = 47785;
+//				if (d == object_to_test){
+//					cout<<"object "<<object_to_test<<" is assigned to repo ";
+//					for (unsigned repo_idx=0; repo_idx < chosen_repos.size(); repo_idx++ )
+//						cout<<chosen_repos[repo_idx]<<", "<<endl;
+//					exit(3);
+//				}
+//			#endif
+			// </aa>
+		}
+
+		// <aa> Update the repository cardinality
+		for (unsigned repo_idx = 0; repo_idx < chosen_repos.size(); repo_idx++)
+					repo_card[ chosen_repos[repo_idx] ] ++;
+		// </aa>
+
+    }
+
+	// <aa> Record the repository cardinality and price
+	for (int repo_idx = 0; repo_idx < num_repos; repo_idx++){
+	    char name[15];
+		sprintf(name,"repo-%d_card",repo_idx);
+		recordScalar(name, repo_card[repo_idx] );
+
+		sprintf(name,"repo-%d_price",repo_idx);
+		recordScalar(name, repo_prices[repo_idx] ); 
+
+	}
+    // </aa>
+}
+/*
+* Initialize the repositories vector. This vector is composed of the
+* repositories specified in the ini file.  In addition some random repositories
+* are added if one wished more repositories than the fixed number specified
+* (see omnet.ini for further comments).
+* <aa>
+* Return value:
+* 	repositories[.], where repositories[i] = d means that the i-th repository is
+*					 in node[d]
+* </aa>
+*/
+int *content_distribution::init_repos(vector<int> node_repos)
+{
+
+	//INPUT CHECK{
+		if (num_repos > nodes)
+			error("content_distribution::init_repos(..): You are trying to distribute more repositories than the number of nodes. This is impossible since there can only be one repository for each node");
+
+		if (node_repos.size() > (unsigned) num_repos)
+			error("content_distribution::init_repos(..): You are trying to distribute too many repositories.");
+
+		//<aa>
+			for (unsigned i=0; i < node_repos.size(); i++ )
+			{
+				int r = node_repos[i];
+				int max_node_index = nodes - 1;
+				if (r > max_node_index)
+				{
+				    std::stringstream ermsg; 
+					ermsg<<"You are trying to associate a repo to a node "<<r
+						<<" that does not exist ";
+					severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+				}		
+			}
+		//</aa>
+	//}INPUT CHECK
+
+
+	int repo_id = 0;
+	int *repositories = new int[num_repos];
+	// <aa> Construct repositories array. repositories[repo_id] will be the id of the
+	// node which repo_id-th repository is connected to. //</aa>
+	while (node_repos.size() ){
+			int r = node_repos[repo_id];
+			node_repos.pop_back();
+			repositories[repo_id++] = r;
+	}
+
+   	//<aa> We already assigned i repositories. Now we randomly assign the rest</aa>
+    int new_rep;
+    while ( repo_id < num_repos  )
+    {
+		new_rep = intrand(nodes);
+		if (find (repositories,repositories + repo_id , new_rep) == repositories + repo_id )
+		{
+			repositories[repo_id++] = new_rep;
+		}
+    }
+    
+    //<aa>
+    #ifdef SEVERE_DEBUG
+		std::stringstream ss;
+		ss<<"The repositories are in the following nodes";
+		for (int j=0; j < repo_id; j++)
+			ss<<" "<<repositories[j];
+		ss<<endl;
+		debug_message(__FILE__,__LINE__, ss.str().c_str() );
+    #endif
+    //</aa>
+
+    return repositories;
+}
+
+
+//<aa>
+double *content_distribution::init_repo_prices()
+{
+	double *repo_prices = new double[num_repos];
+	// <aa> Construct repo_prices array. repo_prices[i] will be the price of the i-th 		
+	//		repository </aa>
+	for (int i=0; i<num_repos; i++)
+		repo_prices[i] = 0;
+    
+    //<aa>
+    #ifdef SEVERE_DEBUG
+		std::stringstream ss;
+		ss<<"Prices are";
+		for (int j=0; j<num_repos; j++)
+			ss<<" "<<repo_prices[j];
+		ss<<endl;
+		debug_message(__FILE__,__LINE__, ss.str().c_str() );
+    #endif
+    //</aa>
+
+    return repo_prices;
+}
+//</aa>
+
+/*
+* Initialize the clients vector. This vector is composed by the clients
+* specified into the ini file.  In addition, some random clients are added if
+* one wished more repositories than the fixed number specified (see omnet.ini
+* for further comments).
+*/
+int *content_distribution::init_clients(vector<int> node_clients){
+
+	// CHECK INPUT{
+    if (node_clients.size() > (unsigned) num_clients)
+		error("You try to distribute too much clients.");
+
+	//<aa>
+		for (unsigned int i=0; i < node_clients.size(); i++ )
+		{
+			int r = node_clients[i];
+			int max_node_index = nodes - 1;
+			if (r > max_node_index)
+			{
+		        std::stringstream ermsg; 
+				ermsg<<"You are trying to associate a client to a node "<<r
+					<<" that does not exist ";
+			    severe_error(__FILE__,__LINE__,ermsg.str().c_str() );
+			}		
+		}
+	//</aa>
+	// }CHECK INPUT
+
+    if (clients != 0)
+		return clients;
+
+    int *clients = new int [num_clients];
+
+    int i = 0;
+    while (node_clients.size() )
+	{
+		int r = node_clients[i];
+		node_clients.pop_back();
+		clients[i++] = r;
+    }
+
+    int new_c;
+    while ( i <  num_clients  ){
+	new_c = intrand(nodes);
+	//NOTE: in this way a client can be attached to a node
+	//where a repository is already attached.
+	if (find (clients,clients + i , new_c) == clients + i)
+	    clients[i++] = new_c;
+    }
+    return clients;
+
+}
+
+
+//###################################################################
+//#######consistent hashing ini
+//###################################################################
+
+void content_distribution::populate_cache(){
+//int add_cache=0;
+
+rcacheini[0]=400;//0
+rcacheini[1]=-1;//0
+rcacheini[2]=400;//1
+rcacheini[3]=-1;//1
+rcacheini[4]=400;//2
+rcacheini[5]=-1;//2
+rcacheini[6]=400;//3
+rcacheini[7]=-1;//3
+rcacheini[8]=200;//4
+rcacheini[9]=-1;//4
+rcacheini[10]=300;//5
+rcacheini[11]=-1;//5
+rcacheini[12]=400;//6
+rcacheini[13]=-1;//6
+rcacheini[14]=500;//7
+rcacheini[15]=-1;//7
+rcacheini[16]=200;//8
+rcacheini[17]=-1;//8
+rcacheini[18]=300;//9
+rcacheini[19]=-1;//9
+rcacheini[20]=400;//10
+rcacheini[21]=-1;//10
+rcacheini[22]=500;//11
+rcacheini[23]=-1;//11
+rcacheini[24]=200;//12
+rcacheini[25]=-1;//12
+rcacheini[26]=300;//13
+rcacheini[27]=-1;//13
+rcacheini[28]=400;//14
+rcacheini[29]=-1;//14
+rcacheini[30]=500;//15
+rcacheini[31]=-1;//15
+    }
+
+void content_distribution::weighted_cache(){
+    double total_cache_size=-1;
+    double cache_size=-1;
+    double key_dis =-1;
+
+
+    cTopology topo;
+              vector<string> types;
+              types.push_back("modules.node.node");
+              topo.extractByNedTypeName( types );
+              for (unordered_map <int, int >::iterator i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < 16; d++){
+              cTopology::Node *node = topo.getNode(i->first); //iterator node
+              cout<<"router name"<< node->getCluster_id() <<endl;
+              CLUCOUNT[node->getCluster_id()].len=CLUCOUNT[node->getCluster_id()].len+1;
+              CLUCOUNT[node->getCluster_id()].total_c += cacheini[i->first];
+              }
+              for (int d = 0; d < 4; d++){
+                  Tsize[d]=CLUCOUNT[d].total_c;
+              cout<<"length "<<CLUCOUNT[d].len<<endl;
+              cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
+              }
+
+              //for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < cl_cache_range; d++){
+              for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){
+       cTopology::Node *node = topo.getNode(i->first);
+    cache_size = cacheini[i->first];
+    total_cache_size = CLUCOUNT[node->getCluster_id()].total_c;
+    if (total_cache_size != 0){
+        key_dis = round(100*(cache_size/total_cache_size));
+    CHW[i->first].id=key_dis ;
+    }
+   cout<<i->first<<"=>ST weighted key range for"<<node->getCluster_id()<<" node is "<<CHW[i->first].id<<endl;
+
+  }
+
+    }
+
+void content_distribution::populate_CHT(){
+    int add_range;
+    int basec1=0;
+    vector<int> myvector;
+//%%%%%%%%%%%%%%%  to generate key for CH (Start)
+   for (int b=0; b<100; b++) myvector.push_back(b);
+                        random_shuffle ( myvector.begin(), myvector.end() );
+
+                        for (int b=0; b<100; b++){
+                            cout<<"my vector="<<myvector[b]<<endl;
+                        }
+ //%%%%%%%%%%%%%%%  to generate key for CH (End)
+
+
+                 cTopology topo;
+                 vector<string> types;
+                 types.push_back("modules.node.node");
+                 topo.extractByNedTypeName( types );
+                 for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){
+                     cTopology::Node *node = topo.getNode(i->first); //iterator node
+
+
+
+
+                 if(node->getCluster_id()==0){
+                         for (int d = 0; d < CHW[i->first].id; d++){
+
+                                             add_range =myvector[basec1];
+                                             CH0[add_range]=i->first;
+                                             basec1++;
+                                             if(basec1==100){basec1=0;}
+                                             cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH0[add_range]<<endl;
+                                         }
+                         cout<<"*************************"<<endl;
+                     }
+
+                 if(node->getCluster_id()==1){
+                                      for (int d = 0; d < CHW[i->first].id; d++){
+
+                                                          add_range =myvector[basec1];
+                                                          CH1[add_range]=i->first;
+                                                          basec1++;
+                                                          if(basec1==100){basec1=0;}
+
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH1[add_range]<<endl;
+                                                      }
+                                      cout<<"*************************"<<endl;
+                                  }
+
+                     if(node->getCluster_id()==2){
+                                      for (int d = 0; d < CHW[i->first].id; d++){
+
+                                                          add_range =myvector[basec1];
+                                                          CH2[add_range]=i->first;
+                                                          basec1++;
+                                                          if(basec1==100){basec1=0;}
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH2[add_range]<<endl;
+                                                      }
+                                      cout<<"*************************"<<endl;
+                                  }
+
+                     if(node->getCluster_id()==3){
+                                              for (int d = 0; d < CHW[i->first].id; d++){
+
+                                                                  add_range =myvector[basec1];
+                                                                  CH3[add_range]=i->first;
+                                                                  basec1++;
+                                                                  if(basec1==100){basec1=0;}
+                                                                  cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH3[add_range]<<endl;
+                                                              }
+                                              cout<<"*************************"<<endl;
+                                          }
+
+
+                   }
+                 for (int a = 0; a < 100; a++){
+                                   cout<< CH2[a]<<endl;
+                                }
+  }

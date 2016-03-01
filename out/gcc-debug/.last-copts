@@ -1,0 +1,1 @@
+-g -Wall -fPIC  -fno-stack-protector -DHAVE_SWAPCONTEXT  -DHAVE_PCAP -DXMLPARSER=libxml -DWITH_PARSIM -DWITH_NETBUILDER  -I. -Iinclude -Iinclude/cost_related_decision_policies -Ipackets -Isrc -Isrc/clients -Isrc/content -Isrc/node -Isrc/node/cache -Isrc/node/strategy -Isrc/statistics -I/home/kyithar/ccnsim++/omnetpp-4.4.1/include

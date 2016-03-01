@@ -1,0 +1,48 @@
+Thanks for your interest in ccnSim. This brief document will guide you through the installation process of ccnSim.
+
+
+ccnSim Requirements
+-------------------
+
+ccnSim requires Omnet++ and the Boost libraries (since v0.2). This guide assumes
+you have Omnet++ and the Boost libraries installed.
+
+* If you do not have Omnet++ (version >= 4.1) installed, download it from
+http://www.omnetpp.org and install it following the Omnet++ installation
+instructions
+
+* To install boost, either use the standard package manager of your Linux
+distribution (e.g., apt-get or yum) or download it from http://www.boost.org/
+and follow instructions therein 
+
+
+ccnSim Installation
+-------------------
+
+In order to install ccnSim, it is first necessary to patch Omnet++, after
+which you can compile the ccnSim sources.
+
+Assuming that $CCNSIM_DIR and $OMNET_DIR are the installation directories of
+ccnSim and Omnet++, issue these commands on a terminal to compile ccnSim:
+
+     cd $CCNSIM_DIR
+     cp ./patch/ctopology.h $OMNET_DIR/include/
+     cp ./patch/ctopology.cc $OMNET_DIR/src/sim
+     cd $OMNET_DIR && make && cd $CCNSIM_DIR
+     ./scripts/makemake.sh
+     make
+
+
+Then, fine-tune your environment by instructing Omnetpp to load ccnSim .ned 
+files (by configuring the NEDPATH environment variable;  you may want to add
+also the local dir "." to let Omnetpp load .ned files from the current folder),
+and finally put the ccnSim executable (soft-linked in $CCNSIM_DIR) in your path
+(e.g.,  by adding $CCNSIM_DIR to your PATH environment variable): 
+
+     export NEDPATH=$CCNSIM_DIR:.
+     export PATH=$PATH:$CCNSIM_DIR
+     
+You should then be able to run ccnSim simulations -- report to the ccnSim
+website for some examples, scripts and inspiration.
+
+

@@ -1,0 +1,50 @@
+What's new in v0.3
+
+
+
+
+* Cost-aware caching  
+----------------------------------------------------------------------------
+
+ccnSim-0.3 implements the cost-aware cache decision policies introduced in:
+
+	A. Araldo, D. Rossi, F. Martignon, ``Design and Evaluation of 
+	Cost-aware Information Centric Routers,'' in ACM SIGCOMM Information
+	Centric	Networking (ICN'14), Paris, September 2014
+	
+Some simple scripts are provided at the ccnSim website to boostrap you with
+cost-aware simulation
+
+
+
+
+* Random number generation  
+----------------------------------------------------------------------------
+
+In the previous versions all modules used a unique random number generator
+(RNG). This means that, for example, calls to the RNG made by a cache decision
+policy algorithm can influence the sequence of random requests. 
+
+It follows that comparing two simulations using the same RNG seed, but differnt
+caching policies (e.g, Leave a Copy Everywhere, that does not employ the RNG,
+and Fixed Probabilistic Decisions, that instead employs it) would be performed
+on different, although stochastically equivalent, input sequences.
+
+In order to decouple the request generation from cache operation and any other
+actions requiring a call to the RNG, starting from v0.3 the RNG for workload
+generation and cache decisions are separated.  See parameter RNG in omnetpp.ini.
+
+
+
+
+*  Improved robustness
+----------------------------------------------------------------------------
+
+In addition to (the usual) bug fixes, changes were also made in order for the
+code to be more robust, such as:
+
+*  Additional checks of the user input (omnetpp.ini and network ned files)
+   written
+
+* SEVERE_DEBUG mode introduced to help debug (See Ch 2 of the ccnSim manual).
+
