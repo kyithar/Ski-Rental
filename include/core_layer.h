@@ -59,7 +59,20 @@ double cache_miss;
 int custodian_hit;
 int c_decision_check;
 
-cstat_entry():Delta(0),cache_miss(0),custodian_hit(0){;}
+cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0){;}
+};
+
+struct rcs_cstat_entry {
+double miss_time;
+double pre_miss_t;
+double Delta;
+double cumu_inter;
+double req_cost;
+double cache_miss;
+int custodian_hit;
+int c_decision_check;
+
+rcs_cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0){;}
 };
 
 class core_layer : public abstract_node{
@@ -98,6 +111,7 @@ class core_layer : public abstract_node{
 		void handle_interest_NAR(ccn_interest *);
 		void handle_interest_NARSVR(ccn_interest *);
 		void handle_forward (ccn_interest *);
+		void handle_forward_update (ccn_interest *);
 		void handle_statCS (ccn_interest *);
 		void handle_statRCS (ccn_interest *);
 		void handle_ghost(ccn_interest *);
@@ -123,15 +137,16 @@ class core_layer : public abstract_node{
 		double RTT;
 		static int repo_interest; 	// <aa> total number of interests set to one of the
 									// repositories of the network </aa>
-		int current_r;//current router
-		int cluster_id;
-		int client_attached;
-		int core_check;
-		int cache_size, total_cache_size;
-		int sigma;
-		simtime_t old_Dalta;
-		simtime_t tmp_pre_miss;
-		double req_cost;
+        int current_r;//current router
+        int cluster_id;
+        int client_attached;
+        int core_check, core_interest_reset;
+        int cache_size, total_cache_size;
+        int sigma;
+        simtime_t old_Dalta;
+        simtime_t tmp_pre_miss;
+        double req_cost, max_req_cost, avg_threshold;
+        double req_cost_rcs, max_req_cost_rcs, avg_threshold_rcs;
 
 
 		//<aa> number of chunks satisfied by the repository attached to this node</aa>
@@ -141,7 +156,7 @@ class core_layer : public abstract_node{
 		//Architecture data structures
 		boost::unordered_map <chunk_t, pit_entry > PIT;
 		boost::unordered_map <chunk_t, cstat_entry > Cstat;
-		boost::unordered_map <chunk_t, cstat_entry > Rstat;
+		boost::unordered_map <chunk_t, rcs_cstat_entry > Rstat;
 		boost::unordered_map<int,int>  CHring;
 		base_cache *ContentStore;
 		base_cache *RContentStore;
