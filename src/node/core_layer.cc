@@ -266,11 +266,7 @@ void core_layer::handle_interest(ccn_interest *int_msg){
 
           if(current_r == 1 ||current_r == 2||current_r == 3){
           int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
-if(int_msg->getI_type()==2){
-    if(current_r==int_msg->getCusto()){
-    handle_statCS(int_msg);}
-    else{handle_forward_update(int_msg);}
-}else{
+
 
     if(client_attached==1){
         handle_interest_AR (int_msg);
@@ -281,7 +277,7 @@ if(int_msg->getI_type()==2){
     }
 
 
-}
+
 
 
 
@@ -290,7 +286,9 @@ if(int_msg->getI_type()==2){
 void core_layer::handle_statCS(ccn_interest *int_msg){
     chunk_t chunk = int_msg->getChunk();//get the chunk number
     Cstat[chunk].cache_miss +=1;
-
+    if(client_attached==1){
+    //cout<<current_r<<"-CS miss "<<Cstat[chunk].cache_miss<<endl;
+    }
                 if(Cstat[chunk].cache_miss>1){// to update the request cost when the Interest is arrrived at the router
 
                     Cstat[chunk].pre_miss_t=Cstat[chunk].miss_time;
@@ -309,6 +307,9 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
 void core_layer::handle_statRCS(ccn_interest *int_msg){
     chunk_t chunk = int_msg->getChunk();//get the chunk number
     Rstat[chunk].cache_miss +=1;
+    if(client_attached==1){
+   // cout<<current_r<<"-RCS miss "<<Rstat[chunk].cache_miss<<endl;
+    }
 
     if(Rstat[chunk].cache_miss>1){// to update the request cost when the Interest is arrrived at the router
 
@@ -324,55 +325,77 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
      }
 
 }
-void core_layer::handle_forward_update(ccn_interest *int_msg){
-    chunk_t chunk = int_msg->getChunk();//get the chunk number
-    bool i_will_forward_interest=true;
-    if (int_msg->getTarget() == getIndex() )
-    {
-        int_msg->setAggregate(false);
-    }
-
-    if ( !interest_aggregation || int_msg->getAggregate()==false )
-        i_will_forward_interest = true;
-
-    if (i_will_forward_interest)
-    {   bool * decision = strategy->get_decision(int_msg);
-        handle_decision(decision,int_msg);
-        delete [] decision;//free memory for the decision array
-    }
-
-}
+//void core_layer::handle_forward_update(ccn_interest *int_msg){
+//
+//    bool i_will_forward_interest=true;
+//    if (int_msg->getTarget() == getIndex() )
+//    {
+//        int_msg->setAggregate(false);
+//    }
+//
+//    if ( !interest_aggregation || int_msg->getAggregate()==false )
+//        i_will_forward_interest = true;
+//
+//    if (i_will_forward_interest)
+//    {   bool * decision = strategy->get_decision(int_msg);
+//        handle_decision(decision,int_msg);
+//        delete [] decision;//free memory for the decision array
+//    }
+//
+//}
 void core_layer::handle_forward(ccn_interest *int_msg){
     chunk_t chunk = int_msg->getChunk();//get the chunk number
+    unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
 
+    if(client_attached==1){
+        if(current_r==int_msg->getCusto()){//custodian-interest come from CS
+            if(pitIt != PIT.end()){
+               int_msg->setI_type(0);
+            }else{
+            int_msg->setI_type(1);
+            PIT[chunk].custo_marking =1;//to store the chunk at custodian
+            }
+        }else{
+            if(pitIt != PIT.end()){
+                int_msg->setI_type(2);
+            }else{
+            PIT[chunk].custo_marking=2;
+            int_msg->setI_type(0);
+            }
+    }
+    }else{
+        if(current_r==int_msg->getCusto()){//custodian-interest come from CS
+            if(pitIt != PIT.end()){
+                int_msg->setI_type(0);
+            }else{
+           int_msg->setI_type(1);
+           PIT[chunk].custo_marking =1;//to store the chunk at custodian
+            }
+        }
 
-
-                             unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
+    }
+   // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
                              bool i_will_forward_interest = false;
                              if (pitIt==PIT.end() || int_msg->getI_type()!=0
                                      || (pitIt != PIT.end() && int_msg->getNfound() )
                                      || simTime() - PIT[chunk].time > 2*RTT){
                                  i_will_forward_interest = true;
-                                 if(int_msg->getCusto()==current_r){
-                                     PIT[chunk].custo_marking =1;//Cache Bit for CS
-                                     int_msg->setI_type(1);
-                                 }else if(client_attached==1){
-                                     PIT[chunk].custo_marking =2;//Cache Bit for RCS
-                                     if(pitIt!=PIT.end()){
-                                         int_msg->setI_type(2);
-                                     }else{
-                                         int_msg->setI_type(0);
+
+                                 if(client_attached==1){
+                                     if (pitIt!=PIT.end()){
+                                         PIT.erase(chunk);
+
                                      }
-
+                                     PIT[chunk].time = simTime();
                                  }
 
 
 
-                              if (pitIt!=PIT.end() && int_msg->getI_type()==0)
-                                  PIT.erase(chunk);
-
-                                  PIT[chunk].time = simTime();
-                                 }
+//                                 if ((pitIt!=PIT.end())&& (int_msg->getI_type()==0))
+//                                  PIT.erase(chunk);
+//
+//                                  PIT[chunk].time = simTime();
+                                }
 
                        if (int_msg->getTarget() == getIndex() )
                        {
@@ -387,9 +410,14 @@ void core_layer::handle_forward(ccn_interest *int_msg){
                            handle_decision(decision,int_msg);
                            delete [] decision;//free memory for the decision array
                        }
-                       add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
 
-
+                       if(client_attached==1){
+                           add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
+                       }else{
+                           if(int_msg->getI_type()!=2){
+                               add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
+                           }
+                       }
 
 
 }
@@ -406,19 +434,39 @@ void core_layer::handle_interest_AR(ccn_interest *int_msg){
 
         if(custo_r==current_r){//the router is also custodian router
 
-            if (ContentStore->lookup(chunk)){//the requested content is inside the cache
-
+            if(int_msg->getI_type()==2){
+                ContentStore->lookup(chunk);
+            }else if(ContentStore->lookup(chunk)){
                 ccn_data* data_msg = compose_data(chunk);
-                          data_msg->setHops(0);
-                          data_msg->setBtw(int_btw); //Copy the highest betweenness
-                          data_msg->setTarget(getIndex());
-                          data_msg->setFound(true);
-                          data_msg->setCapacity(int_msg->getCapacity());
-                          data_msg->setTSI(int_msg->getHops());
-                          data_msg->setTSB(1);
-                          if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                                          data_msg->setHops(0);
+                                          data_msg->setBtw(int_btw); //Copy the highest betweenness
+                                          data_msg->setTarget(getIndex());
+                                          data_msg->setFound(true);
+                                          data_msg->setCapacity(int_msg->getCapacity());
+                                          data_msg->setTSI(int_msg->getHops());
+                                          data_msg->setTSB(1);
+                                          if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                                          send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
 
-                          send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+
+//            if (ContentStore->lookup(chunk)){//the requested content is inside the cache
+//                if(int_msg->getI_type()==2){
+//
+//                }else{
+//                    ccn_data* data_msg = compose_data(chunk);
+//                                              data_msg->setHops(0);
+//                                              data_msg->setBtw(int_btw); //Copy the highest betweenness
+//                                              data_msg->setTarget(getIndex());
+//                                              data_msg->setFound(true);
+//                                              data_msg->setCapacity(int_msg->getCapacity());
+//                                              data_msg->setTSI(int_msg->getHops());
+//                                              data_msg->setTSB(1);
+//                                              if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+//                                              send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+//
+//                }
+
+
                  }else{// the requested contnet is not located at the router cache
                      handle_statCS(int_msg);
                      handle_forward(int_msg);
@@ -461,17 +509,36 @@ void core_layer::handle_interest_NARSVR(ccn_interest *int_msg){
               int_msg->setCusto(custo_r);//add the custodian router name to Interest
 
        if(custo_r==current_r){//current router is custodian
-          if (ContentStore->lookup(chunk)){//find the requested content in CS
-              ccn_data* data_msg = compose_data(chunk);
-              data_msg->setHops(0);
-              data_msg->setBtw(int_btw); //Copy the highest betweenness
-              data_msg->setTarget(getIndex());
-              data_msg->setFound(true);
-              data_msg->setCapacity(int_msg->getCapacity());
-              data_msg->setTSI(int_msg->getHops());
-              data_msg->setTSB(1);
-              if (core_check!=1){data_msg->setCusto_check(1);}
-              send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+           if(int_msg->getI_type()==2){
+               ContentStore->lookup(chunk);
+           }else if(ContentStore->lookup(chunk)){
+               ccn_data* data_msg = compose_data(chunk);
+                                         data_msg->setHops(0);
+                                         data_msg->setBtw(int_btw); //Copy the highest betweenness
+                                         data_msg->setTarget(getIndex());
+                                         data_msg->setFound(true);
+                                         data_msg->setCapacity(int_msg->getCapacity());
+                                         data_msg->setTSI(int_msg->getHops());
+                                         data_msg->setTSB(1);
+                                         if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                                         send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+//          if (ContentStore->lookup(chunk)){//find the requested content in CS
+//              if(int_msg->getI_type()==2){
+//
+//              }else{
+//                  ccn_data* data_msg = compose_data(chunk);
+//                  data_msg->setHops(0);
+//                  data_msg->setBtw(int_btw); //Copy the highest betweenness
+//                  data_msg->setTarget(getIndex());
+//                  data_msg->setFound(true);
+//                  data_msg->setCapacity(int_msg->getCapacity());
+//                  data_msg->setTSI(int_msg->getHops());
+//                  data_msg->setTSB(1);
+//                  if (core_check!=1){data_msg->setCusto_check(1);}
+//                  send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+//
+//              }
+
 
             }else if(my_bitmask & __repo(int_msg->get_name())){
                 //The current router is connected with the content server.
@@ -570,17 +637,23 @@ void core_layer::handle_interest_NAR(ccn_interest *int_msg){
         if (custo_r==current_r){
 
                     if (ContentStore->lookup(chunk)){
-                    ccn_data* data_msg = compose_data(chunk);
-                              data_msg->setHops(0);
-                              data_msg->setBtw(int_btw); //Copy the highest betweenness
-                              data_msg->setTarget(getIndex());
-                              data_msg->setFound(true);
-                              data_msg->setCapacity(int_msg->getCapacity());
-                              data_msg->setTSI(int_msg->getHops());
-                              data_msg->setTSB(1);
-                              if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                        if(int_msg->getI_type()==2){
 
-                           send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+                        }else{
+                            ccn_data* data_msg = compose_data(chunk);
+                                      data_msg->setHops(0);
+                                      data_msg->setBtw(int_btw); //Copy the highest betweenness
+                                      data_msg->setTarget(getIndex());
+                                      data_msg->setFound(true);
+                                      data_msg->setCapacity(int_msg->getCapacity());
+                                      data_msg->setTSI(int_msg->getHops());
+                                      data_msg->setTSB(1);
+                                      if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+
+                                   send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+
+                        }
+
 
                        } else {
                            handle_statCS(int_msg);
@@ -590,7 +663,7 @@ void core_layer::handle_interest_NAR(ccn_interest *int_msg){
 
 
       }else{//(Non access nor  custodian
-          handle_statCS(int_msg);
+          //handle_statCS(int_msg);
           handle_forward(int_msg);
       }
 
@@ -627,11 +700,8 @@ void core_layer::handle_data(ccn_data *data_msg)
     {
 
         if(PIT[chunk].custo_marking==1){
-            //if(core_check==1){//if core layer, cache all
-            //  data_msg->setC_decision(1);
-            //}else{
+
                 cdecision_CS(data_msg);
-            //}
 
             if(data_msg->getC_decision()==1){
 

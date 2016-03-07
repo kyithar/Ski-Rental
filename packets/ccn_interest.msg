@@ -32,6 +32,6 @@ packet ccn_interest{
 									// previous one). When an interest is involved in a loop, it will 
 									// disappear. In this case, to avoid this, set aggregate to false
 	//</aa>
-	int i_type = -1;
+	int i_type = 0;
 	int custo = -1;
 }

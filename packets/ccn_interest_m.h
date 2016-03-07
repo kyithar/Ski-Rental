@@ -51,7 +51,7 @@
  * 									
  * 									
  * 	
- * 	int i_type = -1;
+ * 	int i_type = 0;
  * 	int custo = -1;
  * }
  * </pre>

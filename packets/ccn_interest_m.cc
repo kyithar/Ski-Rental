@@ -45,7 +45,7 @@ ccn_interest_Base::ccn_interest_Base(const char *name, int kind) : ::cPacket(nam
     this->Delay_var = 0;
     this->serialNumber_var = 0;
     this->aggregate_var = true;
-    this->i_type_var = -1;
+    this->i_type_var = 0;
     this->custo_var = -1;
 }
 
