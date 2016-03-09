@@ -36,6 +36,7 @@
 
 Register_Class(content_distribution);
 int num_of_vr=100;
+int num_of_cluster=4;
 boost::unordered_map<int,int> cacheini;
 boost::unordered_map<int,int> Tsize;
 boost::unordered_map<int,int> rcacheini;
@@ -525,28 +526,28 @@ cacheini[1]=cache_size_1;
 cacheini[2]=cache_size_2;
 cacheini[3]=cache_size_3;
 cacheini[4]=cache_size_4;
-cacheini[5]=cache_size_5-(cache_size_5*rcs_percent);
-cacheini[6]=cache_size_6-(cache_size_6*rcs_percent);
-cacheini[7]=cache_size_7-(cache_size_7*rcs_percent);
+cacheini[5]=cache_size_5;
+cacheini[6]=cache_size_6;
+cacheini[7]=cache_size_7;
 cacheini[8]=cache_size_8;
-cacheini[9]=cache_size_9-(cache_size_9*rcs_percent);
-cacheini[10]=cache_size_10-(cache_size_10*rcs_percent);
-cacheini[11]=cache_size_11-(cache_size_11*rcs_percent);
+cacheini[9]=cache_size_9;
+cacheini[10]=cache_size_10;
+cacheini[11]=cache_size_11;
 cacheini[12]=cache_size_12;
-cacheini[13]=cache_size_13-(cache_size_13*rcs_percent);
-cacheini[14]=cache_size_14-(cache_size_14*rcs_percent);
-cacheini[15]=cache_size_15-(cache_size_15*rcs_percent);
+cacheini[13]=cache_size_13;
+cacheini[14]=cache_size_14;
+cacheini[15]=cache_size_15;
 
 rcacheini[0]=cache_size_0;//0
-rcacheini[1]=-1;//0
+rcacheini[1]=0;//0
 rcacheini[2]=cache_size_1;//1
-rcacheini[3]=-1;//1
+rcacheini[3]=0;//1
 rcacheini[4]=cache_size_2;//2
-rcacheini[5]=-1;//2
+rcacheini[5]=0;//2
 rcacheini[6]=cache_size_3;//3
-rcacheini[7]=-1;//3
+rcacheini[7]=0;//3
 rcacheini[8]=cache_size_4;//4
-rcacheini[9]=-1;//4
+rcacheini[9]=0;//4
 rcacheini[10]=cache_size_5-(cache_size_5*rcs_percent);//5
 rcacheini[11]=cache_size_5*rcs_percent;//5
 rcacheini[12]=cache_size_6-(cache_size_6*rcs_percent);//6
@@ -554,7 +555,7 @@ rcacheini[13]=cache_size_6*rcs_percent;//6
 rcacheini[14]=cache_size_7-(cache_size_7*rcs_percent);//7
 rcacheini[15]=cache_size_7*rcs_percent;//7
 rcacheini[16]=cache_size_8;//8
-rcacheini[17]=-1;//8
+rcacheini[17]=0;//8
 rcacheini[18]=cache_size_9-(cache_size_9*rcs_percent);//9
 rcacheini[19]=cache_size_9*rcs_percent;//9
 rcacheini[20]=cache_size_10-(cache_size_10*rcs_percent);//10
@@ -562,7 +563,7 @@ rcacheini[21]=cache_size_10*rcs_percent;//10
 rcacheini[22]=cache_size_11-(cache_size_11*rcs_percent);//11
 rcacheini[23]=cache_size_11*rcs_percent;//11
 rcacheini[24]=cache_size_12;//12
-rcacheini[25]=-1;//12
+rcacheini[25]=0;//12
 rcacheini[26]=cache_size_13-(cache_size_13*rcs_percent);//13
 rcacheini[27]=cache_size_13*rcs_percent;//13
 rcacheini[28]=cache_size_14-(cache_size_14*rcs_percent);//14
@@ -583,14 +584,14 @@ void content_distribution::weighted_cache(){
               topo.extractByNedTypeName( types );
               for (unordered_map <int, int >::iterator i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < 16; d++){
               cTopology::Node *node = topo.getNode(i->first); //iterator node
-              //cout<<"router name"<< node->getCluster_id() <<endl;
+              cout<<"router name"<< node->getCluster_id() <<endl;
               CLUCOUNT[node->getCluster_id()].len=CLUCOUNT[node->getCluster_id()].len+1;
               CLUCOUNT[node->getCluster_id()].total_c += cacheini[i->first];
               }
-              for (int d = 0; d < 4; d++){
+              for (int d = 0; d < num_of_cluster; d++){
                   Tsize[d]=CLUCOUNT[d].total_c;
-              //cout<<"length "<<CLUCOUNT[d].len<<endl;
-              //cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
+              cout<<"length "<<CLUCOUNT[d].len<<endl;
+              cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
               }
 
               //for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < cl_cache_range; d++){
@@ -599,7 +600,7 @@ void content_distribution::weighted_cache(){
     cache_size = cacheini[i->first];
     total_cache_size = CLUCOUNT[node->getCluster_id()].total_c;
     if (total_cache_size != 0){
-        key_dis = round(100*(cache_size/total_cache_size));
+        key_dis = round(num_of_vr*(cache_size/total_cache_size));
     CHW[i->first].id=key_dis ;
     }
   // cout<<i->first<<"=>ST weighted key range for"<<node->getCluster_id()<<" node is "<<CHW[i->first].id<<endl;
@@ -613,12 +614,12 @@ void content_distribution::populate_CHT(){
     int basec1=0;
     vector<int> myvector;
 //%%%%%%%%%%%%%%%  to generate key for CH (Start)
-   for (int b=0; b<100; b++) myvector.push_back(b);
+   for (int b=0; b<num_of_vr; b++) myvector.push_back(b);
                         random_shuffle ( myvector.begin(), myvector.end() );
 
-                        for (int b=0; b<100; b++){
+                        //for (int b=0; b<num_of_vr; b++){
                            // cout<<"my vector="<<myvector[b]<<endl;
-                        }
+                        //}
  //%%%%%%%%%%%%%%%  to generate key for CH (End)
 
 
@@ -638,10 +639,10 @@ void content_distribution::populate_CHT(){
                                              add_range =myvector[basec1];
                                              CH0[add_range]=i->first;
                                              basec1++;
-                                             if(basec1==100){basec1=0;}
-                                             //cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH0[add_range]<<endl;
+                                             if(basec1==num_of_vr){basec1=0;}
+                                            cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH0[add_range]<<endl;
                                          }
-                         //cout<<"*************************"<<endl;
+                         cout<<"*************************"<<endl;
                      }
 
                  if(node->getCluster_id()==1){
@@ -650,11 +651,11 @@ void content_distribution::populate_CHT(){
                                                           add_range =myvector[basec1];
                                                           CH1[add_range]=i->first;
                                                           basec1++;
-                                                          if(basec1==100){basec1=0;}
+                                                          if(basec1==num_of_vr){basec1=0;}
 
-                                                         // cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH1[add_range]<<endl;
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH1[add_range]<<endl;
                                                       }
-                                     // cout<<"*************************"<<endl;
+                                      cout<<"*************************"<<endl;
                                   }
 
                      if(node->getCluster_id()==2){
@@ -663,10 +664,10 @@ void content_distribution::populate_CHT(){
                                                           add_range =myvector[basec1];
                                                           CH2[add_range]=i->first;
                                                           basec1++;
-                                                          if(basec1==100){basec1=0;}
-                                                          //cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH2[add_range]<<endl;
+                                                          if(basec1==num_of_vr){basec1=0;}
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH2[add_range]<<endl;
                                                       }
-                                     // cout<<"*************************"<<endl;
+                                     cout<<"*************************"<<endl;
                                   }
 
                      if(node->getCluster_id()==3){
@@ -675,15 +676,15 @@ void content_distribution::populate_CHT(){
                                                                   add_range =myvector[basec1];
                                                                   CH3[add_range]=i->first;
                                                                   basec1++;
-                                                                  if(basec1==100){basec1=0;}
-                                                                 // cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH3[add_range]<<endl;
+                                                                  if(basec1==num_of_vr){basec1=0;}
+                                                                 cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH3[add_range]<<endl;
                                                               }
-                                              //cout<<"*************************"<<endl;
+                                              cout<<"*************************"<<endl;
                                           }
 
 
                    }
-                 for (int a = 0; a < 100; a++){
+                 //for (int a = 0; a < num_of_vr; a++){
                                   // cout<< CH2[a]<<endl;
-                                }
+                 //               }
   }

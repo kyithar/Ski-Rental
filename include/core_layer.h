@@ -109,6 +109,7 @@ class core_layer : public abstract_node{
 		void handle_interest(ccn_interest *);
 		void handle_interest_AR(ccn_interest *);
 		void handle_interest_NAR(ccn_interest *);
+	    void handle_interest_8(ccn_interest *);
 		void handle_interest_NARSVR(ccn_interest *);
 		void handle_forward (ccn_interest *);
 		void handle_forward_update (ccn_interest *);

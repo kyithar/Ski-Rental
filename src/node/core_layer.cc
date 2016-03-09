@@ -89,8 +89,8 @@ void  core_layer::initialize(){
     if(getIndex()==5||getIndex()==6||getIndex()==7||getIndex()==9||getIndex()==10||getIndex()==11||getIndex()==13||getIndex()==14||getIndex()==15){
            client_attached=1;
        }//to identify the access router
-    cache_size=cacheini[getIndex()];
-  // cout<<"cache size "<<cache_size<<endl;
+   // cache_size=cacheini[getIndex()];
+   //cout<<"cache size "<<cache_size<<endl;
 
 
     //<aa>
@@ -158,7 +158,8 @@ void  core_layer::initialize(){
  * handle_data() have the task of dealing with interest and data processing.
  */
 void core_layer::handleMessage(cMessage *in){
-
+    //cout<<getIndex()<<"_C_"<<ContentStore->get_size()<<endl;
+   // cout<<getIndex()<<"_R_"<<RContentStore->get_size()<<endl;
     current_r = getParentModule()->getIndex();//get router name
 
     ccn_data *data_msg;
@@ -266,15 +267,19 @@ void core_layer::handle_interest(ccn_interest *int_msg){
 
           if(current_r == 1 ||current_r == 2||current_r == 3){
           int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
-
-
+if(current_r==8){
+    handle_interest_8 (int_msg);
+}else{
     if(client_attached==1){
         handle_interest_AR (int_msg);
     }else if(current_r==0){
         handle_interest_NARSVR (int_msg);
     }else{
-        handle_interest_NAR(int_msg);
+        handle_interest_8 (int_msg);
     }
+}
+
+
 
 
 
@@ -588,6 +593,95 @@ if(int_msg->getI_type()==1){
                      }
         }
 
+}
+void core_layer::handle_interest_8(ccn_interest *int_msg){
+    int custo_r;//custodian router
+    int c_name = int_msg->get_name();//get the chunk name
+    chunk_t chunk = int_msg->getChunk();//get the chunk number
+    double int_btw = int_msg->getBtw();
+    custo_r=CHring[c_name % num_of_vr];//get custodian router name
+    //cout<<"custodian router "<<custo_r<<endl;
+    int_msg->setCusto(custo_r);//add the custodian router name to Interest
+
+    if (custo_r==current_r){
+        if(int_msg->getI_type()!=2){// interest type is 0 and 1
+              if(ContentStore->lookup(chunk)){
+                        ccn_data* data_msg = compose_data(chunk);
+                                  data_msg->setHops(0);
+                                  data_msg->setBtw(int_btw); //Copy the highest betweenness
+                                  data_msg->setTarget(getIndex());
+                                  data_msg->setFound(true);
+                                  data_msg->setCapacity(int_msg->getCapacity());
+                                  data_msg->setTSI(int_msg->getHops());
+                                  data_msg->setTSB(1);
+                                  if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                                  send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+
+                              } else{
+                                  handle_statCS(int_msg);//miss stat
+
+
+                                  chunk_t chunk = int_msg->getChunk();//get the chunk number
+                                  unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
+
+                                          if(pitIt != PIT.end()){
+                                             int_msg->setI_type(0);
+                                          }else{
+                                          int_msg->setI_type(1);
+                                          PIT[chunk].custo_marking =1;//to store the chunk at custodian
+                                          }
+
+                                 // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
+                                                           bool i_will_forward_interest = false;
+                                                           if (pitIt==PIT.end() || int_msg->getI_type()!=0
+                                                                   //|| (pitIt != PIT.end() && int_msg->getNfound() )
+                                                                   || simTime() - PIT[chunk].time > 2*RTT){
+                                                               i_will_forward_interest = true;
+
+
+                                                                   if (pitIt!=PIT.end() && int_msg->getI_type()!=1){
+                                                                       PIT.erase(chunk);
+
+                                                                   }
+                                                                   PIT[chunk].time = simTime();
+
+
+                                                              }
+
+                                                     if (int_msg->getTarget() == getIndex() )
+                                                     {
+                                                         int_msg->setAggregate(false);
+                                                     }
+
+                                                     if ( !interest_aggregation || int_msg->getAggregate()==false )
+                                                         i_will_forward_interest = true;
+
+                                                     if (i_will_forward_interest)
+                                                     {   bool * decision = strategy->get_decision(int_msg);
+                                                         handle_decision(decision,int_msg);
+                                                         delete [] decision;//free memory for the decision array
+                                                     }
+
+
+
+                                                             add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
+
+
+
+                  }
+              }else if(int_msg->getI_type()==2){
+                  if(ContentStore->fake_lookup(chunk)){
+                      ContentStore->lookup(chunk);
+                  }else{
+                      ContentStore->lookup(chunk);
+                      handle_statCS(int_msg);//miss stat
+                  }
+              }
+
+
+              }else{
+                  handle_forward(int_msg);
+              }
 }
 
 void core_layer::handle_interest_NAR(ccn_interest *int_msg){
