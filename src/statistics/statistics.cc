@@ -149,7 +149,7 @@ void statistics::handleMessage(cMessage *in){
     switch (in->getKind()){
         case FULL_CHECK:
             for (int i = 0; i < num_nodes;i++)
-            {
+            {//"5,6,7,9,10,11,13,14,15"
                 if (i==5 || i==6 || i==7 || i==9 || i==10 || i==11 || i==13 || i==14 || i==15){
                     //cout<<caches[i]->full() <<"--- "<< rcaches[i]->full()<<endl;
 
@@ -202,6 +202,7 @@ bool statistics::stable(int n){
     bool stable = false;
     double var = 0.0;
     double rate = (caches[n]->hit+rcaches[n]->hit) * 1./ ( (caches[n]->hit+rcaches[n]->hit) + (caches[n]->miss+rcaches[n]->miss) );
+    //"5,6,7,9,10,11,13,14,15"
 if(n==5 || n==6 || n==7 || n==9 || n==10 || n==11 || n==13 || n==14 || n==15){
     //Only hit rates matter, not also the misses
     //cout<<caches[n]->hit<<"---"<<rcaches[n]->hit<<endl;
@@ -270,16 +271,42 @@ void statistics::finish(){
             total_cost += cores[i]->repo_load * cores[i]->get_repo_price();
 
         if (cores[i]->interests){
-            //Check if the given node got involved within the interest/data process
-            global_hit  += (caches[i]->hit+rcaches[i]->hit);
-            cout<<i<<" hit "<<caches[i]->hit<<"---"<<rcaches[i]->hit<<endl;
-            global_miss += (caches[i]->miss+rcaches[i]->miss);
-            cout<<i<<" miss "<<caches[i]->miss<<"---"<<rcaches[i]->miss<<endl;
-            //global_hit  += (rcaches[i]->hit);
-            //global_miss += (rcaches[i]->miss);
-            global_data += cores[i]->data;
-            global_interests += cores[i]->interests;
-            global_repo_load += cores[i]->repo_load;
+            if(i==5 || i==6 || i==7 || i==9 || i==10 || i==11 || i==13 || i==14 || i==15){
+                //Check if the given node got involved within the interest/data process
+                            global_hit  += (caches[i]->hit+rcaches[i]->hit);
+                            cout<<i<<" hit "<<caches[i]->hit<<"---"<<rcaches[i]->hit<<endl;
+                            global_miss += (caches[i]->miss+rcaches[i]->miss);
+                            cout<<i<<" miss "<<caches[i]->miss<<"---"<<rcaches[i]->miss<<endl;
+                            //global_hit  += (rcaches[i]->hit);
+                            //global_miss += (rcaches[i]->miss);
+                            global_data += cores[i]->data;
+                            global_interests += cores[i]->interests;
+                            global_repo_load += cores[i]->repo_load;
+
+            }else{
+                //Check if the given node got involved within the interest/data process
+                            global_hit  += caches[i]->hit;
+                            cout<<i<<" hit "<<caches[i]->hit<<"---"<<rcaches[i]->hit<<endl;
+                            global_miss += caches[i]->miss;
+                            cout<<i<<" miss "<<caches[i]->miss<<"---"<<rcaches[i]->miss<<endl;
+                            //global_hit  += (rcaches[i]->hit);
+                            //global_miss += (rcaches[i]->miss);
+                            global_data += cores[i]->data;
+                            global_interests += cores[i]->interests;
+                            global_repo_load += cores[i]->repo_load;
+            }
+
+
+//            //Check if the given node got involved within the interest/data process
+//            global_hit  += (caches[i]->hit+rcaches[i]->hit);
+//            cout<<i<<" hit "<<caches[i]->hit<<"---"<<rcaches[i]->hit<<endl;
+//            global_miss += (caches[i]->miss+rcaches[i]->miss);
+//            cout<<i<<" miss "<<caches[i]->miss<<"---"<<rcaches[i]->miss<<endl;
+//            //global_hit  += (rcaches[i]->hit);
+//            //global_miss += (rcaches[i]->miss);
+//            global_data += cores[i]->data;
+//            global_interests += cores[i]->interests;
+//            global_repo_load += cores[i]->repo_load;
 
             //<aa>
             #ifdef SEVERE_DEBUG

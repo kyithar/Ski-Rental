@@ -38,7 +38,7 @@ Register_Class(content_distribution);
 int num_of_vr=100;
 int num_of_cluster=4;
 boost::unordered_map<int,int> cacheini;
-boost::unordered_map<int,int> Tsize;
+//boost::unordered_map<int,int> Tsize;
 boost::unordered_map<int,int> rcacheini;
 boost::unordered_map<int,int> testmap;
 boost::unordered_map<int,int>  CH0;
@@ -572,37 +572,46 @@ rcacheini[30]=cache_size_15-(cache_size_15*rcs_percent);//15
 rcacheini[31]=cache_size_15*rcs_percent;//15
     }
 
-void content_distribution::weighted_cache(){
+void content_distribution::weighted_cache(){// cache storage size aware key range distribution
+
     double total_cache_size=-1;
     double cache_size=-1;
     double key_dis =-1;
 
 
     cTopology topo;
-              vector<string> types;
-              types.push_back("modules.node.node");
-              topo.extractByNedTypeName( types );
-              for (unordered_map <int, int >::iterator i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < 16; d++){
+    vector<string> types;
+    types.push_back("modules.node.node");
+    topo.extractByNedTypeName( types );
+
+    for (unordered_map <int, int >::iterator i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < 16; d++){
               cTopology::Node *node = topo.getNode(i->first); //iterator node
-              cout<<"router name"<< node->getCluster_id() <<endl;
-              CLUCOUNT[node->getCluster_id()].len=CLUCOUNT[node->getCluster_id()].len+1;
+
+              cout<<"Cluster-"<< node->getCluster_id() <<endl;
+
+              //CLUCOUNT[node->getCluster_id()].len=CLUCOUNT[node->getCluster_id()].len+1;
+              //cout<<"cl.len"<<CLUCOUNT[node->getCluster_id()].len<<endl;
+
               CLUCOUNT[node->getCluster_id()].total_c += cacheini[i->first];
               }
-              for (int d = 0; d < num_of_cluster; d++){
-                  Tsize[d]=CLUCOUNT[d].total_c;
-              cout<<"length "<<CLUCOUNT[d].len<<endl;
-              cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
-              }
 
-              //for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){// for (int d = 0; d < cl_cache_range; d++){
+              //for (int d = 0; d < num_of_cluster; d++){
+              //    Tsize[d]=CLUCOUNT[d].total_c;
+             // cout<<"length "<<CLUCOUNT[d].len<<endl;
+             // cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
+             // }
+
+
               for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){
-       cTopology::Node *node = topo.getNode(i->first);
-    cache_size = cacheini[i->first];
-    total_cache_size = CLUCOUNT[node->getCluster_id()].total_c;
-    if (total_cache_size != 0){
-        key_dis = round(num_of_vr*(cache_size/total_cache_size));
-    CHW[i->first].id=key_dis ;
-    }
+                  cTopology::Node *node = topo.getNode(i->first);
+                  cache_size = cacheini[i->first];//cache size of current router
+                  total_cache_size = CLUCOUNT[node->getCluster_id()].total_c;//total cache size for each cluster
+
+                  if (total_cache_size != 0){
+                      key_dis = round(num_of_vr*(cache_size/total_cache_size));
+                      CHW[i->first].id=key_dis ;
+                      cout<<"key dis "<<CHW[i->first].id<<endl;
+                  }
   // cout<<i->first<<"=>ST weighted key range for"<<node->getCluster_id()<<" node is "<<CHW[i->first].id<<endl;
 
   }
@@ -615,7 +624,7 @@ void content_distribution::populate_CHT(){
     vector<int> myvector;
 //%%%%%%%%%%%%%%%  to generate key for CH (Start)
    for (int b=0; b<num_of_vr; b++) myvector.push_back(b);
-                        random_shuffle ( myvector.begin(), myvector.end() );
+                        random_shuffle ( myvector.begin(), myvector.end());
 
                         //for (int b=0; b<num_of_vr; b++){
                            // cout<<"my vector="<<myvector[b]<<endl;

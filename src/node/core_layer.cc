@@ -65,22 +65,22 @@ void  core_layer::initialize(){
     if(node->getCluster_id()==0){
            cluster_id=0;
            CHring=CH0;
-           total_cache_size=Tsize[0];
+          // total_cache_size=Tsize[0];
                }
     if(node->getCluster_id()==1){
            cluster_id=1;
            CHring=CH1;
-           total_cache_size=Tsize[1];
+           //total_cache_size=Tsize[1];
                      }
     if(node->getCluster_id()==2){
            cluster_id=2;
            CHring=CH2;
-           total_cache_size=Tsize[2];
+          // total_cache_size=Tsize[2];
                           }
     if(node->getCluster_id()==3){
            cluster_id=3;
            CHring=CH3;
-           total_cache_size=Tsize[3];
+          // total_cache_size=Tsize[3];
                           }
    // cout<<"total cache size "<<total_cache_size<<endl;
 
@@ -267,7 +267,7 @@ void core_layer::handle_interest(ccn_interest *int_msg){
 
           if(current_r == 1 ||current_r == 2||current_r == 3){
           int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
-if(current_r==8){
+if(current_r==8||current_r==4 ||current_r==12){
     handle_interest_8 (int_msg);
 }else{
     if(client_attached==1){
@@ -275,7 +275,7 @@ if(current_r==8){
     }else if(current_r==0){
         handle_interest_NARSVR (int_msg);
     }else{
-        handle_interest_8 (int_msg);
+        handle_interest_NAR (int_msg);
     }
 }
 
@@ -614,7 +614,7 @@ void core_layer::handle_interest_8(ccn_interest *int_msg){
                                   data_msg->setCapacity(int_msg->getCapacity());
                                   data_msg->setTSI(int_msg->getHops());
                                   data_msg->setTSB(1);
-                                  if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
+                                  //if (core_check!=1){data_msg->setCusto_check(1);}//to know whether the content is already cached at the custodian router or not
                                   send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
 
                               } else{
@@ -624,22 +624,22 @@ void core_layer::handle_interest_8(ccn_interest *int_msg){
                                   chunk_t chunk = int_msg->getChunk();//get the chunk number
                                   unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
 
-                                          if(pitIt != PIT.end()){
-                                             int_msg->setI_type(0);
-                                          }else{
+                                         // if(pitIt != PIT.end()){
+                                             //int_msg->setI_type(0);
+                                          //}else{
                                           int_msg->setI_type(1);
                                           PIT[chunk].custo_marking =1;//to store the chunk at custodian
-                                          }
+                                         // }
 
                                  // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
                                                            bool i_will_forward_interest = false;
-                                                           if (pitIt==PIT.end() || int_msg->getI_type()!=0
+                                                           if (pitIt==PIT.end() //|| int_msg->getI_type()!=0
                                                                    //|| (pitIt != PIT.end() && int_msg->getNfound() )
                                                                    || simTime() - PIT[chunk].time > 2*RTT){
                                                                i_will_forward_interest = true;
 
 
-                                                                   if (pitIt!=PIT.end() && int_msg->getI_type()!=1){
+                                                                   if (pitIt!=PIT.end()){// && int_msg->getI_type()!=1){
                                                                        PIT.erase(chunk);
 
                                                                    }
@@ -671,9 +671,9 @@ void core_layer::handle_interest_8(ccn_interest *int_msg){
                   }
               }else if(int_msg->getI_type()==2){
                   if(ContentStore->fake_lookup(chunk)){
-                      ContentStore->lookup(chunk);
+                      ContentStore->lookup(chunk);//to count hit
                   }else{
-                      ContentStore->lookup(chunk);
+                      ContentStore->lookup(chunk);//to count miss
                       handle_statCS(int_msg);//miss stat
                   }
               }
