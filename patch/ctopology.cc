@@ -220,37 +220,37 @@ void cTopology::extractFromNetwork(bool (*selfunc)(cModule *,void *), void *data
                        if(k==0)  {temp_nodev[k].clu_id2 = 0;}//test
                        if(k==1)  {temp_nodev[k].clu_id2 = 0;}//test
                        if(k==2)  {temp_nodev[k].clu_id2 = 0;}//test
-                       if(k==3)  {temp_nodev[k].clu_id2 = 0;}//test
+                       if(k==3)  {temp_nodev[k].clu_id2 = 1;}//test
                        if(k==4)  {temp_nodev[k].clu_id2 = 1;}//test
                        if(k==5)  {temp_nodev[k].clu_id2 = 1;}//test
-                       if(k==6)  {temp_nodev[k].clu_id2 = 1;}//test
-                       if(k==7)  {temp_nodev[k].clu_id2 = 1;}//test
+                       if(k==6)  {temp_nodev[k].clu_id2 = 2;}//test
+                       if(k==7)  {temp_nodev[k].clu_id2 = 2;}//test
                        if(k==8)  {temp_nodev[k].clu_id2 = 2;}//test
-                       if(k==9)  {temp_nodev[k].clu_id2 = 2;}//test
-                       if(k==10)  {temp_nodev[k].clu_id2 = 2;}//test
-                       if(k==11)  {temp_nodev[k].clu_id2 = 2;}//test
-                       if(k==12)  {temp_nodev[k].clu_id2 = 3;}//test
-                       if(k==13)  {temp_nodev[k].clu_id2 = 3;}//test
-                       if(k==14)  {temp_nodev[k].clu_id2 = 3;}//test
-                       if(k==15)  {temp_nodev[k].clu_id2 = 3;}//test
+                       if(k==9)  {temp_nodev[k].clu_id2 = 3;}//test
+                       if(k==10)  {temp_nodev[k].clu_id2 = 3;}//test
+                       if(k==11)  {temp_nodev[k].clu_id2 = 3;}//test
+                       if(k==12)  {temp_nodev[k].clu_id2 = 4;}//test
+                       if(k==13)  {temp_nodev[k].clu_id2 = 4;}//test
+                       if(k==14)  {temp_nodev[k].clu_id2 = 4;}//test
+                       //if(k==15)  {temp_nodev[k].clu_id2 = 3;}//test
 
                    temp_nodev[k].router_name = 0;
                       if(k==0){temp_nodev[k].router_name = 0;}
                       if(k==1){temp_nodev[k].router_name = 1;}
                       if(k==2){temp_nodev[k].router_name = 2;}
-                      if(k==3){temp_nodev[k].router_name = 3;}
-                      if(k==4){temp_nodev[k].router_name = 0;}
-                      if(k==5){temp_nodev[k].router_name = 1;}
-                      if(k==6){temp_nodev[k].router_name = 2;}
-                      if(k==7){temp_nodev[k].router_name = 3;}
-                      if(k==8){temp_nodev[k].router_name = 0;}
-                      if(k==9){temp_nodev[k].router_name = 1;}
-                      if(k==10){temp_nodev[k].router_name = 2;}
-                      if(k==11){temp_nodev[k].router_name = 3;}
+                      if(k==3){temp_nodev[k].router_name = 0;}
+                      if(k==4){temp_nodev[k].router_name = 1;}
+                      if(k==5){temp_nodev[k].router_name = 2;}
+                      if(k==6){temp_nodev[k].router_name = 0;}
+                      if(k==7){temp_nodev[k].router_name = 1;}
+                      if(k==8){temp_nodev[k].router_name = 2;}
+                      if(k==9){temp_nodev[k].router_name = 0;}
+                      if(k==10){temp_nodev[k].router_name = 1;}
+                      if(k==11){temp_nodev[k].router_name = 2;}
                       if(k==12){temp_nodev[k].router_name = 0;}
                       if(k==13){temp_nodev[k].router_name = 1;}
                       if(k==14){temp_nodev[k].router_name = 2;}
-                      if(k==15){temp_nodev[k].router_name = 3;}
+                     //if(k==15){temp_nodev[k].router_name = 3;}
 
             k++;
         }

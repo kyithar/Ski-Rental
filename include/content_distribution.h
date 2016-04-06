@@ -56,6 +56,7 @@ extern boost::unordered_map<int,int> CH0;
 extern boost::unordered_map<int,int> CH1;
 extern boost::unordered_map<int,int> CH2;
 extern boost::unordered_map<int,int> CH3;
+extern boost::unordered_map<int,int> CH4;
 extern boost::unordered_map <int, int > Cache_size; // to store the cache size to caculate cache decision
 extern boost::unordered_map <int, int > Tsize; // to store the cache size to caculate cache decision
 extern int num_of_vr;

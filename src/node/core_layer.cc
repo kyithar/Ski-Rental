@@ -82,11 +82,16 @@ void  core_layer::initialize(){
            CHring=CH3;
           // total_cache_size=Tsize[3];
                           }
+    if(node->getCluster_id()==4){
+           cluster_id=4;
+           CHring=CH4;
+          // total_cache_size=Tsize[3];
+                          }
    // cout<<"total cache size "<<total_cache_size<<endl;
 
-    if(getIndex()==0||getIndex()==1||getIndex()==2||getIndex()==3){ core_check=1;}//to identify the core routers
+    if(getIndex()==0||getIndex()==1||getIndex()==2){ core_check=1;}//to identify the core routers
 
-    if(getIndex()==5||getIndex()==6||getIndex()==7||getIndex()==9||getIndex()==10||getIndex()==11||getIndex()==13||getIndex()==14||getIndex()==15){
+    if(getIndex()==4||getIndex()==5||getIndex()==7||getIndex()==8||getIndex()==10||getIndex()==11||getIndex()==13||getIndex()==14){
            client_attached=1;
        }//to identify the access router
    // cache_size=cacheini[getIndex()];
@@ -265,9 +270,9 @@ void core_layer::finish(){
 
 void core_layer::handle_interest(ccn_interest *int_msg){
 
-          if(current_r == 1 ||current_r == 2||current_r == 3){
+          if(current_r == 1 ||current_r == 2){
           int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
-if(current_r==8||current_r==4 ||current_r==12){
+if(current_r==3||current_r==6 ||current_r==9||current_r==12){
     handle_interest_8 (int_msg);
 }else{
     if(client_attached==1){
@@ -634,7 +639,7 @@ void core_layer::handle_interest_8(ccn_interest *int_msg){
                                  // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
                                                            bool i_will_forward_interest = false;
                                                            if (pitIt==PIT.end() //|| int_msg->getI_type()!=0
-                                                                   //|| (pitIt != PIT.end() && int_msg->getNfound() )
+                                                                   || (pitIt != PIT.end() && int_msg->getNfound() )
                                                                    || simTime() - PIT[chunk].time > 2*RTT){
                                                                i_will_forward_interest = true;
 
@@ -714,16 +719,17 @@ void core_layer::handle_interest_NAR(ccn_interest *int_msg){
                                   handle_statCS(int_msg);//miss stat
                                   handle_forward(int_msg);
                   }
-              }else{//interest type is 2
-                  if(ContentStore->lookup(chunk)){
-
+              }else if(int_msg->getI_type()==2){
+                  if(ContentStore->fake_lookup(chunk)){
+                      ContentStore->lookup(chunk);//to count hit
                   }else{
+                      ContentStore->lookup(chunk);//to count miss
                       handle_statCS(int_msg);//miss stat
                   }
-
               }
-              }else{
 
+
+              }else{
                   handle_forward(int_msg);
               }
     }
@@ -918,6 +924,7 @@ void core_layer::cdecision_CS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
 
     if(ContentStore->check_full()==1){//when the cache space of CS is full
+        cout<< "Content Store Caching Cost "<<ContentStore->getcaching_cost()<<endl;
        if(Cstat[chunk].req_cost < ContentStore->getcaching_cost()){
                      data_msg->setC_decision(0);
                     }else{
@@ -951,12 +958,12 @@ void core_layer::cdecision_RCS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
 
             if(RContentStore->check_full()==1){
-               // cout<<"RCS is full"<<endl;
+               cout<<"RCS is full"<<endl;
                if(data_msg->getCusto_check()!=1){
                    Rstat.erase(chunk);
                    data_msg->setC_decision(0);
                } else{
-
+                   cout<< "Content Store Caching Cost "<<RContentStore->getcaching_cost()<<endl;
                   // cout<<"req "<< Rstat[chunk].req_cost << " caching "<<RContentStore->getcaching_cost()<<endl;
                    if((Rstat[chunk].req_cost < RContentStore->getcaching_cost())&& data_msg->getCusto_check()==1){
                        //cout<<"not-cached"<<endl;
