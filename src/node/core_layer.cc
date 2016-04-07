@@ -82,16 +82,11 @@ void  core_layer::initialize(){
            CHring=CH3;
           // total_cache_size=Tsize[3];
                           }
-    if(node->getCluster_id()==4){
-           cluster_id=4;
-           CHring=CH4;
-          // total_cache_size=Tsize[3];
-                          }
    // cout<<"total cache size "<<total_cache_size<<endl;
 
-    if(getIndex()==0||getIndex()==1||getIndex()==2){ core_check=1;}//to identify the core routers
+    if(getIndex()==0){ core_check=1;}//to identify the core routers
 
-    if(getIndex()==4||getIndex()==5||getIndex()==7||getIndex()==8||getIndex()==10||getIndex()==11||getIndex()==13||getIndex()==14){
+    if(getIndex()==2||getIndex()==3||getIndex()==4||getIndex()==5||getIndex()==7||getIndex()==8||getIndex()==9||getIndex()==10||getIndex()==12||getIndex()==13||getIndex()==14||getIndex()==15){
            client_attached=1;
        }//to identify the access router
    // cache_size=cacheini[getIndex()];
@@ -135,22 +130,6 @@ void  core_layer::initialize(){
     //<aa>
     clear_stat();
 
-    #ifdef SEVERE_DEBUG
-    check_if_correct(__LINE__);
-    is_it_initialized = true;
-
-    if (gateSize("face$o") > (int) sizeof(interface_t)*8 )
-    {
-        std::stringstream msg;
-        msg<<"Node "<<getIndex()<<" has "<<gateSize("face$o")<<" output ports. But the maximum "
-            <<"number of interfaces manageable by ccnsim is "<<sizeof(interface_t)*8 <<
-            " beacause the type of "
-            <<"interface_t is of size "<<sizeof(interface_t)<<" bytes. You can change the definition of "
-            <<"interface_t (in ccnsim.h) to solve this issue and recompile";
-        severe_error(__FILE__, __LINE__, msg.str().c_str() );
-    }
-    #endif
-    //</aa>
 
 }
 
@@ -270,15 +249,15 @@ void core_layer::finish(){
 
 void core_layer::handle_interest(ccn_interest *int_msg){
 
-          if(current_r == 1 ||current_r == 2){
-          int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
-if(current_r==3||current_r==6 ||current_r==9||current_r==12){
+if(current_r == 0){int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
+if(current_r==1||current_r==6 ||current_r==11){
     handle_interest_8 (int_msg);
 }else{
     if(client_attached==1){
         handle_interest_AR (int_msg);
     }else if(current_r==0){
-        handle_interest_NARSVR (int_msg);
+        //handle_interest_NARSVR (int_msg);
+        handle_interest_Core (int_msg);
     }else{
         handle_interest_NAR (int_msg);
     }
@@ -490,6 +469,128 @@ void core_layer::handle_interest_AR(ccn_interest *int_msg){
         }
 
     }
+void core_layer::handle_interest_Core(ccn_interest *int_msg){
+    int c_name = int_msg->get_name();//get the chunk name
+                  chunk_t chunk = int_msg->getChunk();//get the chunk number
+                  double int_btw = int_msg->getBtw();
+                  if (ContentStore->lookup(chunk)){
+                      //
+                      //a) Check in your Content Store
+                      //
+                      ccn_data* data_msg = compose_data(chunk);
+
+                      data_msg->setHops(0);
+                      data_msg->setBtw(int_btw); //Copy the highest betweenness
+                      data_msg->setTarget(getIndex());
+                      data_msg->setFound(true);
+
+                      data_msg->setCapacity(int_msg->getCapacity());
+                      data_msg->setTSI(int_msg->getHops());
+                      data_msg->setTSB(1);
+
+                      //<aa> I transformed send in send_data</aa>
+                      send_data(data_msg,"face$o", int_msg->getArrivalGate()->getIndex(), __LINE__);
+
+
+
+                  } else if ( my_bitmask & __repo(int_msg->get_name() ) ){
+                     // handle_statCS(int_msg);
+                  //
+                  //b) Look locally (only if you own a repository)
+                  // we are mimicking a message sent to the repository
+                  //
+                      ccn_data* data_msg = compose_data(chunk);
+
+                      //<aa>
+                      data_msg->setPrice(repo_price);     // I fix in the data msg the cost of the object
+                                                      // that is the price of the repository
+                      //</aa>
+
+
+                      repo_interest++;
+                      repo_load++;
+
+                      data_msg->setHops(1);
+                      data_msg->setTarget(getIndex());
+                      data_msg->setBtw(std::max(my_btw,int_btw));
+
+                      data_msg->setCapacity(int_msg->getCapacity());
+                      data_msg->setTSI(int_msg->getHops() + 1);
+                      data_msg->setTSB(1);
+                      data_msg->setFound(true);
+                 data_msg->setC_decision(1);
+                 //cdecision_CS(data_msg);
+                      ContentStore->store(data_msg);
+
+                      //<aa> I transformed send in send_data</aa>
+                      send_data(data_msg,"face$o",int_msg->getArrivalGate()->getIndex(),__LINE__);
+
+
+                 } else {
+                      //
+                      //c) Put the interface within the PIT (and follow your FIB)
+                      //
+
+
+
+                      unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
+
+                      //<aa>
+                      bool i_will_forward_interest = false;
+                      //</aa>
+
+                      //<aa> Insert a new PIT entry for this object, if not present. If present and invalid, reset the
+                      // old entry. If present and valid, do nothing </aa>
+                      if (
+                          //<aa> there is no such an entry in the PIT thus I have to forward the interest</aa>
+                          pitIt==PIT.end()
+
+                          //<aa> There is a PIT entry but it is invalid (the PIT entry has been invalidated by client
+                          // because a timer expired and the object has not been found </aa>
+                          || (pitIt != PIT.end() && int_msg->getNfound() )
+
+                          //<aa> Too much time has been passed since the old PIT entry was added </aa>
+                          || simTime() - PIT[chunk].time > 2*RTT
+                      ){
+                          //<aa> Replaces the lines
+                          //      bool * decision = strategy->get_decision(int_msg);
+                          //      handle_decision(decision,int_msg);
+                          //      delete [] decision;//free memory for the decision array
+                          i_will_forward_interest = true;
+                          //</aa>
+
+                          if (pitIt!=PIT.end())
+                              PIT.erase(chunk);
+                          //<aa>Last time this entry has been updated is now</aa>
+                          PIT[chunk].time = simTime();
+                      }
+
+                      //<aa>
+                      if (int_msg->getTarget() == getIndex() )
+                      {   // I am the target of this interest but I have no more the object
+                          // Therefore, this interest cannot be aggregated with the others
+                          int_msg->setAggregate(false);
+                      }
+
+                      if ( !interest_aggregation || int_msg->getAggregate()==false )
+                          i_will_forward_interest = true;
+
+                      if (i_will_forward_interest)
+                      {   bool * decision = strategy->get_decision(int_msg);
+                          handle_decision(decision,int_msg);
+                          delete [] decision;//free memory for the decision array
+                      }
+
+
+                      //<aa> The following line will add the origin interface of the interest
+                      //      msg to the PIT </aa>
+                      add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
+
+                  }
+
+
+
+}
 
 void core_layer::handle_interest_NARSVR(ccn_interest *int_msg){
     int custo_r;//custodian router
@@ -639,7 +740,7 @@ void core_layer::handle_interest_8(ccn_interest *int_msg){
                                  // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
                                                            bool i_will_forward_interest = false;
                                                            if (pitIt==PIT.end() //|| int_msg->getI_type()!=0
-                                                                   || (pitIt != PIT.end() && int_msg->getNfound() )
+                                                                   //|| (pitIt != PIT.end() && int_msg->getNfound() )
                                                                    || simTime() - PIT[chunk].time > 2*RTT){
                                                                i_will_forward_interest = true;
 
@@ -717,7 +818,49 @@ void core_layer::handle_interest_NAR(ccn_interest *int_msg){
 
                               } else{
                                   handle_statCS(int_msg);//miss stat
-                                  handle_forward(int_msg);
+
+
+                                                                   chunk_t chunk = int_msg->getChunk();//get the chunk number
+                                                                   unordered_map < chunk_t , pit_entry >::iterator pitIt = PIT.find(chunk);
+                                  int_msg->setI_type(1);
+                                                                        PIT[chunk].custo_marking =1;//to store the chunk at custodian
+                                                                       // }
+
+                                                               // cout<<"current r "<<current_r<<" custodian "<<int_msg->getCusto()<<"->interest type "<<int_msg->getI_type()<<endl;
+                                                                                         bool i_will_forward_interest = false;
+                                                                                         if (pitIt==PIT.end()//|| int_msg->getI_type()!=0
+                                                                                                 || (pitIt != PIT.end() && int_msg->getNfound() )
+                                                                                                 || simTime() - PIT[chunk].time > 2*RTT){
+                                                                                             i_will_forward_interest = true;
+
+
+                                                                                                 if (pitIt!=PIT.end()){// && int_msg->getI_type()!=1){
+                                                                                                     PIT.erase(chunk);
+
+                                                                                                 }
+                                                                                                 PIT[chunk].time = simTime();
+
+
+                                                                                            }
+
+                                                                                   if (int_msg->getTarget() == getIndex() )
+                                                                                   {
+                                                                                       int_msg->setAggregate(false);
+                                                                                   }
+
+                                                                                   if ( !interest_aggregation || int_msg->getAggregate()==false )
+                                                                                       i_will_forward_interest = true;
+
+                                                                                   if (i_will_forward_interest)
+                                                                                   {   bool * decision = strategy->get_decision(int_msg);
+                                                                                       handle_decision(decision,int_msg);
+                                                                                       delete [] decision;//free memory for the decision array
+                                                                                   }
+
+
+
+                                                                                           add_to_pit( chunk, int_msg->getArrivalGate()->getIndex() );
+
                   }
               }else if(int_msg->getI_type()==2){
                   if(ContentStore->fake_lookup(chunk)){
@@ -763,6 +906,11 @@ void core_layer::handle_data(ccn_data *data_msg)
     //If someone had previously requested the data
     if ( pitIt != PIT.end() )
     {
+        if(current_r==0 && PIT[chunk].custo_marking==1){
+           // cdecision_CS(data_msg);
+            data_msg->setC_decision(1);
+            ContentStore->store(data_msg);
+    }else{
 
         if(PIT[chunk].custo_marking==1){
 
@@ -785,6 +933,12 @@ void core_layer::handle_data(ccn_data *data_msg)
 
 
         }
+
+    }
+
+
+
+
 
         interfaces = (pitIt->second).interfaces;//get interface list
         i = 0;
@@ -924,7 +1078,6 @@ void core_layer::cdecision_CS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
 
     if(ContentStore->check_full()==1){//when the cache space of CS is full
-        cout<< "Content Store Caching Cost "<<ContentStore->getcaching_cost()<<endl;
        if(Cstat[chunk].req_cost < ContentStore->getcaching_cost()){
                      data_msg->setC_decision(0);
                     }else{
@@ -958,12 +1111,12 @@ void core_layer::cdecision_RCS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
 
             if(RContentStore->check_full()==1){
-               cout<<"RCS is full"<<endl;
+               // cout<<"RCS is full"<<endl;
                if(data_msg->getCusto_check()!=1){
                    Rstat.erase(chunk);
                    data_msg->setC_decision(0);
                } else{
-                   cout<< "Content Store Caching Cost "<<RContentStore->getcaching_cost()<<endl;
+
                   // cout<<"req "<< Rstat[chunk].req_cost << " caching "<<RContentStore->getcaching_cost()<<endl;
                    if((Rstat[chunk].req_cost < RContentStore->getcaching_cost())&& data_msg->getCusto_check()==1){
                        //cout<<"not-cached"<<endl;

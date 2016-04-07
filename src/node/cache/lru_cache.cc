@@ -180,27 +180,15 @@ bool lru_cache::data_lookup(chunk_t elem){
     return true;
 }
 double lru_cache::get_caching_cost(){
-
-
-//get_eviction_candidate()->pre_reqcost;
-//    if ( full() ){
-//        //caching_cost = get_eviction_candidate()->pre_reqcost;
-//        return get_eviction_candidate()->pre_reqcost ;
-//    }
-//
-//        else return NULL;
-
-   // if(lru->hit_count > 1){
-
-        //caching_cost=lru->pre_reqcost+lru->cumu_inter;
-    //}else{
-
-        //caching_cost=0;//lru->pre_reqcost;
-   // }
+    if(lru->hit_count>1){
+        caching_cost=lru->pre_reqcost+lru->cumu_inter;
+    }else{
+        caching_cost=lru->pre_reqcost;
+    }
 
 
    //cout<<": LRU caching Cost "<<caching_cost<< " hit "<< lru->hit_count<< " Delta "<<lru->Delta<< " sim time "<<simTime()<<" hit time  "<<lru->hit_time<<endl;
-
+    return caching_cost ;
     //return lru->hit_count;
 
 }

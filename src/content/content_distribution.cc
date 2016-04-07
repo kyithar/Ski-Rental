@@ -36,7 +36,7 @@
 
 Register_Class(content_distribution);
 int num_of_vr=100;
-int num_of_cluster=5;
+int num_of_cluster=4;
 boost::unordered_map<int,int> cacheini;
 //boost::unordered_map<int,int> Tsize;
 boost::unordered_map<int,int> rcacheini;
@@ -45,7 +45,6 @@ boost::unordered_map<int,int>  CH0;
 boost::unordered_map<int,int>  CH1;
 boost::unordered_map<int,int>  CH2;
 boost::unordered_map<int,int>  CH3;
-boost::unordered_map<int,int>  CH4;
 
 
 vector<file> content_distribution::catalog;
@@ -504,23 +503,23 @@ int *content_distribution::init_clients(vector<int> node_clients){
 //###################################################################
 
 void content_distribution::populate_cache(){
- float rcs_percent = 0.4;
- float cache_size_0 = 200;
- float cache_size_1 = 400;
- float cache_size_2 = 400;
- float cache_size_3 = 200;
- float cache_size_4 = 400;
- float cache_size_5 = 400;
- float cache_size_6 = 200;
- float cache_size_7 = 400;
- float cache_size_8 = 400;
- float cache_size_9 = 200;
- float cache_size_10 = 400;
- float cache_size_11 = 400;
- float cache_size_12 = 200;
- float cache_size_13 = 400;
- float cache_size_14 = 400;
- //float cache_size_15 = 500;
+ float rcs_percent = 0.1;
+ float cache_size_0 = 1250;
+ float cache_size_1 = 125;
+ float cache_size_2 = 250;
+ float cache_size_3 = 375;
+ float cache_size_4 = 250;
+ float cache_size_5 = 250;
+ float cache_size_6 = 125;
+ float cache_size_7 = 250;
+ float cache_size_8 = 375;
+ float cache_size_9 = 250;
+ float cache_size_10 = 250;
+ float cache_size_11 = 125;
+ float cache_size_12 = 250;
+ float cache_size_13 = 375;
+ float cache_size_14 = 250;
+ float cache_size_15 = 250;
 //int add_cache=0;
 cacheini[0]=cache_size_0;
 cacheini[1]=cache_size_1;
@@ -537,40 +536,40 @@ cacheini[11]=cache_size_11;
 cacheini[12]=cache_size_12;
 cacheini[13]=cache_size_13;
 cacheini[14]=cache_size_14;
-//cacheini[15]=cache_size_15;
+cacheini[15]=cache_size_15;
 
 rcacheini[0]=cache_size_0;//0
 rcacheini[1]=0;//0
 rcacheini[2]=cache_size_1;//1
 rcacheini[3]=0;//1
-rcacheini[4]=cache_size_2;//2
-rcacheini[5]=0;//2
-rcacheini[6]=cache_size_3;//3
-rcacheini[7]=0;//3
-rcacheini[8]=cache_size_4;//4
-rcacheini[9]=0;//4
+rcacheini[4]=cache_size_2-(cache_size_2*rcs_percent);//2
+rcacheini[5]=cache_size_2*rcs_percent;//2
+rcacheini[6]=cache_size_3-(cache_size_3*rcs_percent);//3
+rcacheini[7]=cache_size_3*rcs_percent;//3
+rcacheini[8]=cache_size_4-(cache_size_4*rcs_percent);//4
+rcacheini[9]=cache_size_4*rcs_percent;//4
 rcacheini[10]=cache_size_5-(cache_size_5*rcs_percent);//5
 rcacheini[11]=cache_size_5*rcs_percent;//5
-rcacheini[12]=cache_size_6-(cache_size_6*rcs_percent);//6
-rcacheini[13]=cache_size_6*rcs_percent;//6
+rcacheini[12]=cache_size_6;//6
+rcacheini[13]=0;//6
 rcacheini[14]=cache_size_7-(cache_size_7*rcs_percent);//7
 rcacheini[15]=cache_size_7*rcs_percent;//7
-rcacheini[16]=cache_size_8;//8
-rcacheini[17]=0;//8
+rcacheini[16]=cache_size_8-(cache_size_8*rcs_percent);//8
+rcacheini[17]=cache_size_8*rcs_percent;//8
 rcacheini[18]=cache_size_9-(cache_size_9*rcs_percent);//9
 rcacheini[19]=cache_size_9*rcs_percent;//9
 rcacheini[20]=cache_size_10-(cache_size_10*rcs_percent);//10
 rcacheini[21]=cache_size_10*rcs_percent;//10
-rcacheini[22]=cache_size_11-(cache_size_11*rcs_percent);//11
-rcacheini[23]=cache_size_11*rcs_percent;//11
-rcacheini[24]=cache_size_12;//12
-rcacheini[25]=0;//12
+rcacheini[22]=cache_size_11;//11
+rcacheini[23]=0;//11
+rcacheini[24]=cache_size_12-(cache_size_12*rcs_percent);//12
+rcacheini[25]=cache_size_12*rcs_percent;//12
 rcacheini[26]=cache_size_13-(cache_size_13*rcs_percent);//13
 rcacheini[27]=cache_size_13*rcs_percent;//13
 rcacheini[28]=cache_size_14-(cache_size_14*rcs_percent);//14
 rcacheini[29]=cache_size_14*rcs_percent;//14
-//rcacheini[30]=cache_size_15-(cache_size_15*rcs_percent);//15
-//rcacheini[31]=cache_size_15*rcs_percent;//15
+rcacheini[30]=cache_size_15-(cache_size_15*rcs_percent);//15
+rcacheini[31]=cache_size_15*rcs_percent;//15
     }
 
 void content_distribution::weighted_cache(){// cache storage size aware key range distribution
@@ -650,7 +649,7 @@ void content_distribution::populate_CHT(){
                                              CH0[add_range]=i->first;
                                              basec1++;
                                              if(basec1==num_of_vr){basec1=0;}
-                                            cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-added keys-"<<add_range<<" to"<<CH0[add_range]<<endl;
+                                            cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH0[add_range]<<endl;
                                          }
                          cout<<"*************************"<<endl;
                      }
@@ -663,7 +662,7 @@ void content_distribution::populate_CHT(){
                                                           basec1++;
                                                           if(basec1==num_of_vr){basec1=0;}
 
-                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-added keys-"<<add_range<<" to"<<CH1[add_range]<<endl;
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH1[add_range]<<endl;
                                                       }
                                       cout<<"*************************"<<endl;
                                   }
@@ -675,7 +674,7 @@ void content_distribution::populate_CHT(){
                                                           CH2[add_range]=i->first;
                                                           basec1++;
                                                           if(basec1==num_of_vr){basec1=0;}
-                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-added keys-"<<add_range<<" to"<<CH2[add_range]<<endl;
+                                                          cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH2[add_range]<<endl;
                                                       }
                                      cout<<"*************************"<<endl;
                                   }
@@ -687,18 +686,7 @@ void content_distribution::populate_CHT(){
                                                                   CH3[add_range]=i->first;
                                                                   basec1++;
                                                                   if(basec1==num_of_vr){basec1=0;}
-                                                                 cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-added keys-"<<add_range<<" to"<<CH3[add_range]<<endl;
-                                                              }
-                                              cout<<"*************************"<<endl;
-                                          }
-                     if(node->getCluster_id()==4){
-                                              for (int d = 0; d < CHW[i->first].id; d++){
-
-                                                                  add_range =myvector[basec1];
-                                                                  CH4[add_range]=i->first;
-                                                                  basec1++;
-                                                                  if(basec1==num_of_vr){basec1=0;}
-                                                                 cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-added keys-"<<add_range<<" to"<<CH4[add_range]<<endl;
+                                                                 cout<<"cluster "<<node->getCluster_id()<<"-Router- "<<i->first<<"-is added keys-"<<add_range<<" to"<<CH3[add_range]<<endl;
                                                               }
                                               cout<<"*************************"<<endl;
                                           }
