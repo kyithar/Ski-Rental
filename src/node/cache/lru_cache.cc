@@ -172,7 +172,7 @@ bool lru_cache::data_lookup(chunk_t elem){
         tmp_pre_hit=mru->ski_hit_time;//previous hit time
         mru->ski_hit_time = (simTime().dbl()*1000);//current hit time
         mru->Delta +=mru->ski_hit_time-tmp_pre_hit;//current hit time - previous hit time
-        mru->cumu_inter=mru->hit_count/(mru->Delta/(mru->hit_count-1));
+        mru->cumu_inter +=mru->hit_count/(mru->Delta/(mru->hit_count-1));
     }else{//first time content hit at the CS
         mru->ski_hit_time = (simTime().dbl()*1000.0);
     }

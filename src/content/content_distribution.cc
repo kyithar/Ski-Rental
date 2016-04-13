@@ -503,7 +503,7 @@ int *content_distribution::init_clients(vector<int> node_clients){
 //###################################################################
 
 void content_distribution::populate_cache(){
- float rcs_percent = 0.1;
+ float rcs_percent = 0.4;
  float cache_size_0 = 1250;
  float cache_size_1 = 125;
  float cache_size_2 = 250;

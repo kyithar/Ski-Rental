@@ -284,7 +284,7 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                     Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
                     Cstat[chunk].Delta += Cstat[chunk].miss_time -Cstat[chunk].pre_miss_t;
                     Cstat[chunk].cumu_inter=Cstat[chunk].Delta/(Cstat[chunk].cache_miss-1);
-                    Cstat[chunk].req_cost=Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
+                    Cstat[chunk].req_cost +=Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
 
                  }else {
                      Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
@@ -306,7 +306,7 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
         Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
         Rstat[chunk].Delta += Rstat[chunk].miss_time -Rstat[chunk].pre_miss_t;
         Rstat[chunk].cumu_inter=Rstat[chunk].Delta/(Rstat[chunk].cache_miss-1);
-        Rstat[chunk].req_cost=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
+        Rstat[chunk].req_cost +=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
 
      }else {
          Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
@@ -1085,7 +1085,10 @@ void core_layer::cdecision_CS(ccn_data *data_msg){
                       data_msg->setPre_reqcost(Cstat[chunk].req_cost);
                     }
    }else{
-
+       unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
+                       if(RstatIt==Rstat.end()){
+                           Rstat[chunk].uni=uniform(0, 1, 0);
+                       }
 
        if(max_req_cost<Cstat[chunk].req_cost){
 
@@ -1095,7 +1098,7 @@ void core_layer::cdecision_CS(ccn_data *data_msg){
        }
 
        //cout<<" current "<< Cstat[chunk].req_cost  <<" avgthreshold "<< avg_threshold<<endl;
-       if(Cstat[chunk].req_cost >avg_threshold){
+       if(Cstat[chunk].req_cost >=Rstat[chunk].uni){
           // cout<<"cached"<<endl;
            data_msg->setC_decision(1);
            data_msg->setPre_reqcost(Cstat[chunk].req_cost);
@@ -1133,6 +1136,10 @@ void core_layer::cdecision_RCS(ccn_data *data_msg){
 
 
             }else{
+                unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
+                if(RstatIt==Rstat.end()){
+                    Rstat[chunk].uni=uniform(0, 1, 0.5);
+                }
 
                 if(max_req_cost_rcs<Rstat[chunk].req_cost){
 
@@ -1142,7 +1149,7 @@ void core_layer::cdecision_RCS(ccn_data *data_msg){
                 }
 
                 //cout<<" curr RCS"<< Rstat[chunk].req_cost <<" avgthresholdrcs "<< avg_threshold_rcs<<endl;
-                if(Rstat[chunk].req_cost >avg_threshold_rcs){
+                if(Rstat[chunk].req_cost >=Rstat[chunk].uni){
                     data_msg->setC_decision(1);
                     data_msg->setPre_reqcost(Rstat[chunk].req_cost);
 

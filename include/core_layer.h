@@ -71,8 +71,9 @@ double req_cost;
 double cache_miss;
 int custodian_hit;
 int c_decision_check;
+double uni;
 
-rcs_cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0){;}
+rcs_cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0),uni(0){;}
 };
 
 class core_layer : public abstract_node{
