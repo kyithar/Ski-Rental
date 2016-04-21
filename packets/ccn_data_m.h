@@ -53,6 +53,7 @@
  * 	int c_decision = -1; 
  * 	int custo_check = -1; 
  * 	double pre_reqcost = -1; 
+ * 	double tresh = -1; 
  * }
  * </pre>
  *
@@ -96,6 +97,7 @@ class ccn_data_Base : public ::cPacket
     int c_decision_var;
     int custo_check_var;
     double pre_reqcost_var;
+    double tresh_var;
 
   private:
     void copy(const ccn_data_Base& other);
@@ -143,6 +145,8 @@ class ccn_data_Base : public ::cPacket
     virtual void setCusto_check(int custo_check);
     virtual double getPre_reqcost() const;
     virtual void setPre_reqcost(double pre_reqcost);
+    virtual double getTresh() const;
+    virtual void setTresh(double tresh);
 };
 
 

@@ -35,4 +35,5 @@ packet ccn_data{
 	int c_decision = -1; 
 	int custo_check = -1; 
 	double pre_reqcost = -1; 
+	double tresh = -1; 
 }

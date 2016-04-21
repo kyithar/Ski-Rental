@@ -55,6 +55,7 @@ class base_cache : public abstract_node{
 		virtual void data_store (ccn_data *) = 0;
 		virtual bool data_lookup(chunk_t) = 0;
 		virtual double get_caching_cost() = 0;
+		virtual double get_tresh() = 0;
 		virtual void dump(){cout<<"Not implemented"<<endl;}
 
 		//<aa>
@@ -75,6 +76,7 @@ class base_cache : public abstract_node{
 		bool lookup(chunk_t);
 		void store (cMessage *);
 		double getcaching_cost();
+		double getTresh();
 		bool check_full();
 		void clear_stat();
 

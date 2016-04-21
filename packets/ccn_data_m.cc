@@ -46,6 +46,7 @@ ccn_data_Base::ccn_data_Base(const char *name, int kind) : ::cPacket(name,kind)
     this->c_decision_var = -1;
     this->custo_check_var = -1;
     this->pre_reqcost_var = -1;
+    this->tresh_var = -1;
 }
 
 ccn_data_Base::ccn_data_Base(const ccn_data_Base& other) : ::cPacket(other)
@@ -80,6 +81,7 @@ void ccn_data_Base::copy(const ccn_data_Base& other)
     this->c_decision_var = other.c_decision_var;
     this->custo_check_var = other.custo_check_var;
     this->pre_reqcost_var = other.pre_reqcost_var;
+    this->tresh_var = other.tresh_var;
 }
 
 void ccn_data_Base::parsimPack(cCommBuffer *b)
@@ -98,6 +100,7 @@ void ccn_data_Base::parsimPack(cCommBuffer *b)
     doPacking(b,this->c_decision_var);
     doPacking(b,this->custo_check_var);
     doPacking(b,this->pre_reqcost_var);
+    doPacking(b,this->tresh_var);
 }
 
 void ccn_data_Base::parsimUnpack(cCommBuffer *b)
@@ -116,6 +119,7 @@ void ccn_data_Base::parsimUnpack(cCommBuffer *b)
     doUnpacking(b,this->c_decision_var);
     doUnpacking(b,this->custo_check_var);
     doUnpacking(b,this->pre_reqcost_var);
+    doUnpacking(b,this->tresh_var);
 }
 
 chunk_t& ccn_data_Base::getChunk()
@@ -248,6 +252,16 @@ void ccn_data_Base::setPre_reqcost(double pre_reqcost)
     this->pre_reqcost_var = pre_reqcost;
 }
 
+double ccn_data_Base::getTresh() const
+{
+    return tresh_var;
+}
+
+void ccn_data_Base::setTresh(double tresh)
+{
+    this->tresh_var = tresh;
+}
+
 class ccn_dataDescriptor : public cClassDescriptor
 {
   public:
@@ -296,7 +310,7 @@ const char *ccn_dataDescriptor::getProperty(const char *propertyname) const
 int ccn_dataDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 13+basedesc->getFieldCount(object) : 13;
+    return basedesc ? 14+basedesc->getFieldCount(object) : 14;
 }
 
 unsigned int ccn_dataDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -321,8 +335,9 @@ unsigned int ccn_dataDescriptor::getFieldTypeFlags(void *object, int field) cons
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<13) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<14) ? fieldTypeFlags[field] : 0;
 }
 
 const char *ccn_dataDescriptor::getFieldName(void *object, int field) const
@@ -347,8 +362,9 @@ const char *ccn_dataDescriptor::getFieldName(void *object, int field) const
         "c_decision",
         "custo_check",
         "pre_reqcost",
+        "tresh",
     };
-    return (field>=0 && field<13) ? fieldNames[field] : NULL;
+    return (field>=0 && field<14) ? fieldNames[field] : NULL;
 }
 
 int ccn_dataDescriptor::findField(void *object, const char *fieldName) const
@@ -368,6 +384,7 @@ int ccn_dataDescriptor::findField(void *object, const char *fieldName) const
     if (fieldName[0]=='c' && strcmp(fieldName, "c_decision")==0) return base+10;
     if (fieldName[0]=='c' && strcmp(fieldName, "custo_check")==0) return base+11;
     if (fieldName[0]=='p' && strcmp(fieldName, "pre_reqcost")==0) return base+12;
+    if (fieldName[0]=='t' && strcmp(fieldName, "tresh")==0) return base+13;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -393,8 +410,9 @@ const char *ccn_dataDescriptor::getFieldTypeString(void *object, int field) cons
         "int",
         "int",
         "double",
+        "double",
     };
-    return (field>=0 && field<13) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<14) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *ccn_dataDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -447,6 +465,7 @@ std::string ccn_dataDescriptor::getFieldAsString(void *object, int field, int i)
         case 10: return long2string(pp->getC_decision());
         case 11: return long2string(pp->getCusto_check());
         case 12: return double2string(pp->getPre_reqcost());
+        case 13: return double2string(pp->getTresh());
         default: return "";
     }
 }
@@ -473,6 +492,7 @@ bool ccn_dataDescriptor::setFieldAsString(void *object, int field, int i, const 
         case 10: pp->setC_decision(string2long(value)); return true;
         case 11: pp->setCusto_check(string2long(value)); return true;
         case 12: pp->setPre_reqcost(string2double(value)); return true;
+        case 13: pp->setTresh(string2double(value)); return true;
         default: return false;
     }
 }
@@ -499,8 +519,9 @@ const char *ccn_dataDescriptor::getFieldStructName(void *object, int field) cons
         NULL,
         NULL,
         NULL,
+        NULL,
     };
-    return (field>=0 && field<13) ? fieldStructNames[field] : NULL;
+    return (field>=0 && field<14) ? fieldStructNames[field] : NULL;
 }
 
 void *ccn_dataDescriptor::getFieldStructPointer(void *object, int field, int i) const

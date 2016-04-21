@@ -49,6 +49,8 @@ void random_cache::data_store(ccn_data *data_msg){
 }
 double random_cache::get_caching_cost(){}
 
+double random_cache::get_tresh(){}
+
 bool random_cache::data_lookup(chunk_t chunk){
     bool ret = (cache.find(chunk) != cache.end());
     return ret;

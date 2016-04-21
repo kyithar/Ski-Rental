@@ -52,7 +52,13 @@ void lru_cache::data_store(ccn_data *data_msg) {
     p->older = 0;
     p->Delta = 0;
     p->pre_reqcost=data_msg->getPre_reqcost();
+    p->tresh=data_msg->getTresh();
 
+    //if(getIndex()!=0){
+    //    cout<<"get tresh "<<data_msg->getTresh()<<endl;
+    //cout<<"P-tresh "<<p->tresh<<endl;
+   // cout<<"--------------"<<endl;
+    //}
 
     //The cache is empty. Add just one element. The mru and lru element are the
     //same
@@ -165,6 +171,7 @@ bool lru_cache::data_lookup(chunk_t elem){
     mru->newer = pos_elem;
 
     //update the mru
+    tmp_pre_hit=0;
     mru = pos_elem;
     mru->hit_time = simTime();
     pos_elem->hit_count +=1;
@@ -173,23 +180,43 @@ bool lru_cache::data_lookup(chunk_t elem){
         mru->ski_hit_time = (simTime().dbl()*1000);//current hit time
         mru->Delta +=mru->ski_hit_time-tmp_pre_hit;//current hit time - previous hit time
         mru->cumu_inter +=mru->hit_count/(mru->Delta/(mru->hit_count-1));
+
+        //Rstat[chunk].pre_miss_t=Rstat[chunk].miss_time;
+        //Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
+       // Rstat[chunk].Delta += Rstat[chunk].miss_time -Rstat[chunk].pre_miss_t;
+        //Rstat[chunk].cumu_inter=Rstat[chunk].Delta/(Rstat[chunk].cache_miss-1);
+       // Rstat[chunk].miss_cost +=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
+        //cout<<"hit time "<<tmp_pre_hit<< endl;
+        //cout<<"Delta "<<mru->Delta<<endl;
+       // cout<<"mru->cumu_inter"<<mru->cumu_inter<<endl;
     }else{//first time content hit at the CS
         mru->ski_hit_time = (simTime().dbl()*1000.0);
+        mru->cumu_inter=0;
     }
 
     return true;
 }
 double lru_cache::get_caching_cost(){
+    caching_cost =0;
     if(lru->hit_count>1){
         caching_cost=lru->pre_reqcost+lru->cumu_inter;
+        //cout<<"lru caching cost "<<caching_cost<<endl;
     }else{
         caching_cost=lru->pre_reqcost;
+        //cout<<"lru caching cost---less1 "<<caching_cost<<endl;
     }
 
 
    //cout<<": LRU caching Cost "<<caching_cost<< " hit "<< lru->hit_count<< " Delta "<<lru->Delta<< " sim time "<<simTime()<<" hit time  "<<lru->hit_time<<endl;
     return caching_cost ;
     //return lru->hit_count;
+
+}
+
+double lru_cache::get_tresh(){
+    double count;
+    count = lru->hit_count+lru->tresh;
+    return count;
 
 }
 

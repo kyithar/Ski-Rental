@@ -228,6 +228,11 @@ void base_cache::store(cMessage *in){
 double base_cache::getcaching_cost(){
     return get_caching_cost();
 }
+
+double base_cache::getTresh(){
+    return get_tresh();
+}
+
 bool base_cache::check_full(){
     return full();
 }

@@ -44,6 +44,7 @@ class two_cache: public base_cache{
 	virtual bool data_lookup(chunk_t);
 	virtual bool full();
 	virtual double get_caching_cost();
+	virtual double get_tresh();
 
     private:
 	deque<uint64_t> deq;

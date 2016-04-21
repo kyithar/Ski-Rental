@@ -74,6 +74,7 @@ void two_cache::data_store(ccn_data *data_msg){
 
 }
 double two_cache::get_caching_cost(){}
+double two_cache::get_tresh(){}
 
 bool two_cache::data_lookup(chunk_t chunk){
     return (cache.find(chunk)!=cache.end());

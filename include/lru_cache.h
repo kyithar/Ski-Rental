@@ -50,9 +50,10 @@ struct lru_pos{
     double Caching_cost;
     double  hit_count;
     double pre_reqcost;
+    double tresh;
 	//<aa>
 	double cost; //meaningful only with cost aware caching
-	lru_pos():Delta(0), hit_count(0){;}
+	lru_pos():ski_hit_time(0),Delta(0),cumu_inter(0),Caching_cost(0),hit_count(0),pre_reqcost(0),tresh(0){;}
 	//</aa>
 };
 
@@ -74,6 +75,7 @@ class lru_cache:public base_cache{
 		bool data_lookup(chunk_t);
 		bool fake_lookup(chunk_t);
 		double get_caching_cost();
+		double get_tresh();
 
 		void dump();
 

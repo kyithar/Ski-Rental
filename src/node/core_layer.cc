@@ -274,9 +274,11 @@ if(current_r==1||current_r==6 ||current_r==11){
 
 void core_layer::handle_statCS(ccn_interest *int_msg){
     chunk_t chunk = int_msg->getChunk();//get the chunk number
+    unordered_map <chunk_t, cstat_entry >::iterator CstatIt = Cstat.find(chunk);
+    if(CstatIt==Cstat.end()){
+            Cstat[chunk].uni=uniform(0, 1, 0);
+    }
     Cstat[chunk].cache_miss +=1;
-
-    //cout<<current_r<<"-CS miss "<<Cstat[chunk].cache_miss<<endl;
 
                 if(Cstat[chunk].cache_miss>1){// to update the request cost when the Interest is arrrived at the router
 
@@ -284,21 +286,48 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                     Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
                     Cstat[chunk].Delta += Cstat[chunk].miss_time -Cstat[chunk].pre_miss_t;
                     Cstat[chunk].cumu_inter=Cstat[chunk].Delta/(Cstat[chunk].cache_miss-1);
-                    Cstat[chunk].req_cost +=Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
+                    Cstat[chunk].miss_cost +=Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
 
                  }else {
                      Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
-                     Cstat[chunk].req_cost=0;
+                     Cstat[chunk].miss_cost=0;
                  }
+                //if(Cstat[chunk].cache_miss>1){
 
+                    if(ContentStore->full()==true){
+                        Cstat[chunk].cache_cost=ContentStore->getTresh();
+                        //cout<<"full-cache cost "<< Cstat[chunk].cache_cost<<endl;
+                        //double a =pow((1+1/Cstat[chunk].cache_cost),Cstat[chunk].cache_cost)-1;
+                        Cstat[chunk].x +=1/Cstat[chunk].cache_cost;//(1/(a*Cstat[chunk].cache_cost));
+                        if(Cstat[chunk].x>=1){
+                            Cstat[chunk].x=1;
+                        }
+                    }else{//rcs is free
+                        if(Cstat[chunk].x<1){
+                            Cstat[chunk].cache_cost=20;
+                            //double a =pow((1+1/Cstat[chunk].cache_cost),Cstat[chunk].cache_cost)-1;
+                            Cstat[chunk].x +=1/Cstat[chunk].cache_cost;//(1+Cstat[chunk].miss_cost)///(1/a*Cstat[chunk].cache_cost);
+                            if(Cstat[chunk].x>=1){
+                                //Cstat[chunk].thresh=Cstat[chunk].x;
+                                Cstat[chunk].x=1;
+                            }
+                        }
+
+                    }
+
+
+                //}
+               //cout<<"cs x "<<Cstat[chunk].x<<endl;
 }
 
 void core_layer::handle_statRCS(ccn_interest *int_msg){
     chunk_t chunk = int_msg->getChunk();//get the chunk number
-    Rstat[chunk].cache_miss +=1;
-    if(client_attached==1){
-   //cout<<current_r<<"-RCS miss "<<Rstat[chunk].cache_miss<<endl;
+    unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
+    if(RstatIt==Rstat.end()){
+            Rstat[chunk].uni=uniform(0, 1, 0);
     }
+
+    Rstat[chunk].cache_miss +=1;
 
     if(Rstat[chunk].cache_miss>1){// to update the request cost when the Interest is arrrived at the router
 
@@ -306,12 +335,47 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
         Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
         Rstat[chunk].Delta += Rstat[chunk].miss_time -Rstat[chunk].pre_miss_t;
         Rstat[chunk].cumu_inter=Rstat[chunk].Delta/(Rstat[chunk].cache_miss-1);
-        Rstat[chunk].req_cost +=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
+        Rstat[chunk].miss_cost +=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
 
      }else {
          Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
-         Rstat[chunk].req_cost=0;
+         Rstat[chunk].miss_cost=0;
      }
+   // if(Rstat[chunk].cache_miss>1){
+        if(RContentStore->full()==true){
+            Rstat[chunk].cache_cost=RContentStore->getTresh();
+            //cout<<"full-cache cost RCS "<< Rstat[chunk].cache_cost<<endl;
+            //double a = pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;
+            Rstat[chunk].x +=1/Rstat[chunk].cache_cost;//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
+
+            if(Rstat[chunk].x>=1){
+
+                Rstat[chunk].x=1;
+            }
+        }else{//rcs is free
+            if(Rstat[chunk].x<1){
+                Rstat[chunk].cache_cost=20;
+                //double a =pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;
+                //cout<<"a "<<a<<endl;
+                Rstat[chunk].x +=1/Rstat[chunk].cache_cost;//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
+               //cout<<"x "<<Rstat[chunk].x<<endl;
+              // cout<<"uni "<<Rstat[chunk].uni<<endl;
+                if(Rstat[chunk].x>=1){
+                    //cout<<"x "<<Rstat[chunk].x<<endl;
+                   // cout<<"uni "<<Rstat[chunk].uni<<endl;
+                    //Rstat[chunk].thresh=Rstat[chunk].x;
+                    Rstat[chunk].x=1;
+
+                }
+            }
+
+        }
+
+
+   // }
+       // cout<<"Rcs x "<<Rstat[chunk].x<<endl;
+   // cout<<"R cache cost "<<Rstat[chunk].cache_cost<<endl;
+
 
 }
 //void core_layer::handle_forward_update(ccn_interest *int_msg){
@@ -1077,88 +1141,70 @@ ccn_data* core_layer::compose_data(uint64_t response_data){
 void core_layer::cdecision_CS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
 
-    if(ContentStore->check_full()==1){//when the cache space of CS is full
-       if(Cstat[chunk].req_cost < ContentStore->getcaching_cost()){
-                     data_msg->setC_decision(0);
-                    }else{
-                      data_msg->setC_decision(1);
-                      data_msg->setPre_reqcost(Cstat[chunk].req_cost);
-                    }
-   }else{
-       unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
-                       if(RstatIt==Rstat.end()){
-                           Rstat[chunk].uni=uniform(0, 1, 0);
-                       }
-
-       if(max_req_cost<Cstat[chunk].req_cost){
-
-           max_req_cost = Cstat[chunk].req_cost;
-           avg_threshold = max_req_cost/1000;
-    //cout<<" max "<< max_req_cost <<" avgthreshold "<< avg_threshold<<endl;
-       }
-
-       //cout<<" current "<< Cstat[chunk].req_cost  <<" avgthreshold "<< avg_threshold<<endl;
-       if(Cstat[chunk].req_cost >=Rstat[chunk].uni){
+       if(Cstat[chunk].x==1){
           // cout<<"cached"<<endl;
            data_msg->setC_decision(1);
-           data_msg->setPre_reqcost(Cstat[chunk].req_cost);
+           data_msg->setPre_reqcost(Cstat[chunk].miss_cost);
+           data_msg->setTresh(Cstat[chunk].cache_miss);
+           if(Rstat[chunk].cache_miss<0){
+               cout<<"error r miss "<<Rstat[chunk].cache_miss<<endl;
+           }
 
        }else{//cout<<"not-cached"<<endl;
                   data_msg->setC_decision(0);
                   data_msg->setPre_reqcost(0);
+                  data_msg->setTresh(Cstat[chunk].cache_miss);
               }
-   }
+       //cout<<"--------------"<<endl;
+       //cout<<"C miss "<<Cstat[chunk].cache_miss<<endl;
 }
 
 void core_layer::cdecision_RCS(ccn_data *data_msg){
     chunk_t chunk = data_msg -> getChunk(); //Get information about the file
+if(RContentStore->full()==true){
+    // cout<<"RCS is full"<<endl;
+    if(data_msg->getCusto_check()!=1){
+        Rstat.erase(chunk);
+        data_msg->setC_decision(0);
+    } else{
 
-            if(RContentStore->check_full()==1){
-               // cout<<"RCS is full"<<endl;
-               if(data_msg->getCusto_check()!=1){
-                   Rstat.erase(chunk);
-                   data_msg->setC_decision(0);
-               } else{
+       // cout<<"req "<< Rstat[chunk].miss_cost << " caching "<<RContentStore->getcaching_cost()<<endl;
+        if(Rstat[chunk].x==1){
+            //cout<<"not-cached"<<endl;
+                 data_msg->setC_decision(1);
+                 //cout<<"miss cost rcs decision "<<Rstat[chunk].miss_cost<<endl;
+                 data_msg->setPre_reqcost(Rstat[chunk].miss_cost);
+                 data_msg->setTresh(Rstat[chunk].cache_miss);
+                 if(Rstat[chunk].cache_miss<0){
+                     cout<<"error r miss "<<Rstat[chunk].cache_miss<<endl;
+                 }
+             }else{
+                 //cout<<"cached"<<endl;
+                 data_msg->setC_decision(0);
+                 data_msg->setPre_reqcost(0);
+                 data_msg->setTresh(Rstat[chunk].cache_miss);
+             }
 
-                  // cout<<"req "<< Rstat[chunk].req_cost << " caching "<<RContentStore->getcaching_cost()<<endl;
-                   if((Rstat[chunk].req_cost < RContentStore->getcaching_cost())&& data_msg->getCusto_check()==1){
-                       //cout<<"not-cached"<<endl;
-                            data_msg->setC_decision(0);
-                        }else{
-                            //cout<<"cached"<<endl;
-                            data_msg->setC_decision(1);
-                            data_msg->setPre_reqcost(Rstat[chunk].req_cost);
-                        }
+    }
 
-               }
+}else{
 
+    if(Rstat[chunk].x==1){
+        //cout<<"not-cached"<<endl;
+             data_msg->setC_decision(1);
+             //cout<<"miss cost rcs decision "<<Rstat[chunk].miss_cost<<endl;
+             data_msg->setPre_reqcost(Rstat[chunk].miss_cost);
+             data_msg->setTresh(Rstat[chunk].cache_miss);
+         }else{
+             //cout<<"cached"<<endl;
+             data_msg->setC_decision(0);
+             data_msg->setPre_reqcost(0);
+             data_msg->setTresh(Rstat[chunk].cache_miss);
+         }
 
-
-
-            }else{
-                unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
-                if(RstatIt==Rstat.end()){
-                    Rstat[chunk].uni=uniform(0, 1, 0.5);
-                }
-
-                if(max_req_cost_rcs<Rstat[chunk].req_cost){
-
-                    max_req_cost_rcs = Rstat[chunk].req_cost;
-                    avg_threshold_rcs = max_req_cost_rcs/1000;
-             //cout<<" maxrcs "<< max_req_cost_rcs <<" avgthresholdrcs "<< avg_threshold_rcs<<endl;
-                }
-
-                //cout<<" curr RCS"<< Rstat[chunk].req_cost <<" avgthresholdrcs "<< avg_threshold_rcs<<endl;
-                if(Rstat[chunk].req_cost >=Rstat[chunk].uni){
-                    data_msg->setC_decision(1);
-                    data_msg->setPre_reqcost(Rstat[chunk].req_cost);
-
-                }else{
-                           data_msg->setC_decision(0);
-                           data_msg->setPre_reqcost(0);
-                       }
-
-            }
+}
+//cout<<"--------------"<<endl;
+//cout<<"R miss "<<Rstat[chunk].cache_miss<<endl;
 }
 
 /*

@@ -46,6 +46,7 @@ class random_cache: public base_cache{
 	void data_store(ccn_data *);
 	bool full();
 	double get_caching_cost();
+	double get_tresh();
 
 	//Deprecated
 	bool warmup();

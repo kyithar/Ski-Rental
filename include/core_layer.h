@@ -56,10 +56,14 @@ double Delta;
 double cumu_inter;
 double req_cost;
 double cache_miss;
+double miss_cost;
+double cache_cost;
 int custodian_hit;
 int c_decision_check;
-
-cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0){;}
+double uni;
+double x;
+double thresh;
+cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),miss_cost(0), cache_cost(0),custodian_hit(0),uni(0),x(0),thresh(0){;}
 };
 
 struct rcs_cstat_entry {
@@ -69,11 +73,15 @@ double Delta;
 double cumu_inter;
 double req_cost;
 double cache_miss;
+double miss_cost;
+double cache_cost;
 int custodian_hit;
 int c_decision_check;
 double uni;
+double x;
+double thresh;
 
-rcs_cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),custodian_hit(0),uni(0){;}
+rcs_cstat_entry():miss_time(0),pre_miss_t(0),Delta(0),cumu_inter(0), req_cost(0), cache_miss(0),miss_cost(0), cache_cost(0),custodian_hit(0),uni(0),x(0),thresh(0){;}
 };
 
 class core_layer : public abstract_node{
