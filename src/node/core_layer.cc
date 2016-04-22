@@ -298,16 +298,17 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                         Cstat[chunk].cache_cost=ContentStore->getTresh();
                         //cout<<"full-cache cost "<< Cstat[chunk].cache_cost<<endl;
                         //double a =pow((1+1/Cstat[chunk].cache_cost),Cstat[chunk].cache_cost)-1;
-                        Cstat[chunk].x +=1/Cstat[chunk].cache_cost;//(1/(a*Cstat[chunk].cache_cost));
-                        if(Cstat[chunk].x>=1){
+                        Cstat[chunk].x +=(1/Cstat[chunk].cache_cost)-(ContentStore->getcaching_cost()-Cstat[chunk].miss_cost);//(1/(a*Cstat[chunk].cache_cost));
+                        //Cstat[chunk].x +=(1/Cstat[chunk].cache_cost);
+                        if(Cstat[chunk].x>=Cstat[chunk].uni){
                             Cstat[chunk].x=1;
                         }
                     }else{//rcs is free
                         if(Cstat[chunk].x<1){
-                            Cstat[chunk].cache_cost=20;
+                            Cstat[chunk].cache_cost=50;
                             //double a =pow((1+1/Cstat[chunk].cache_cost),Cstat[chunk].cache_cost)-1;
-                            Cstat[chunk].x +=1/Cstat[chunk].cache_cost;//(1+Cstat[chunk].miss_cost)///(1/a*Cstat[chunk].cache_cost);
-                            if(Cstat[chunk].x>=1){
+                            Cstat[chunk].x +=Cstat[chunk].miss_cost+(1/Cstat[chunk].cache_cost);//(1+Cstat[chunk].miss_cost)///(1/a*Cstat[chunk].cache_cost);
+                            if(Cstat[chunk].x>=Cstat[chunk].uni){
                                 //Cstat[chunk].thresh=Cstat[chunk].x;
                                 Cstat[chunk].x=1;
                             }
@@ -318,6 +319,7 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
 
                 //}
                //cout<<"cs x "<<Cstat[chunk].x<<endl;
+                    //cout<<"cache miss ratio "<<Cstat[chunk].miss_cost+(1/Cstat[chunk].cache_cost)<<endl;
 }
 
 void core_layer::handle_statRCS(ccn_interest *int_msg){
@@ -346,21 +348,22 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
             Rstat[chunk].cache_cost=RContentStore->getTresh();
             //cout<<"full-cache cost RCS "<< Rstat[chunk].cache_cost<<endl;
             //double a = pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;
-            Rstat[chunk].x +=1/Rstat[chunk].cache_cost;//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
+            Rstat[chunk].x +=(1/Rstat[chunk].cache_cost)-(RContentStore->getcaching_cost()-Rstat[chunk].miss_cost);//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
 
-            if(Rstat[chunk].x>=1){
+            if(Rstat[chunk].x>=Rstat[chunk].uni){
 
                 Rstat[chunk].x=1;
             }
         }else{//rcs is free
             if(Rstat[chunk].x<1){
-                Rstat[chunk].cache_cost=20;
+                Rstat[chunk].cache_cost=50;
                 //double a =pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;
                 //cout<<"a "<<a<<endl;
-                Rstat[chunk].x +=1/Rstat[chunk].cache_cost;//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
-               //cout<<"x "<<Rstat[chunk].x<<endl;
+                Rstat[chunk].x +=Rstat[chunk].miss_cost+(1/Rstat[chunk].cache_cost);//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));
+                //Rstat[chunk].x +=(1/Rstat[chunk].cache_cost);
+                //cout<<"x "<<Rstat[chunk].x<<endl;
               // cout<<"uni "<<Rstat[chunk].uni<<endl;
-                if(Rstat[chunk].x>=1){
+                if(Rstat[chunk].x>=Rstat[chunk].uni){
                     //cout<<"x "<<Rstat[chunk].x<<endl;
                    // cout<<"uni "<<Rstat[chunk].uni<<endl;
                     //Rstat[chunk].thresh=Rstat[chunk].x;
