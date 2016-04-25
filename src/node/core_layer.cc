@@ -54,6 +54,10 @@ void  core_layer::initialize(){
     req_cost =0;
     max_req_cost=0;
     avg_threshold =0;
+    max_miss_cs=0;
+    max_miss_rcs=0;
+    max_cost_cs=0;
+    max_cost_rcs=0;
 
 
     cTopology topo;
@@ -305,7 +309,14 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                         }
                     }else{//rcs is free
                         if(Cstat[chunk].x<1){
-                            Cstat[chunk].cache_cost=50;
+                            if(max_miss_cs<Cstat[chunk].cache_miss){
+                                double cs_size=ContentStore->get_size();
+                                max_miss_cs=Cstat[chunk].cache_miss;
+                                max_cost_cs= pow(max_miss_cs/(cs_size*0.01),max_miss_cs);//((max_miss_cs/(cs_size*0.01))*(max_miss_cs+1));//ceil(pow(max_miss_cs/cs_size,max_miss_cs));
+                                cout<<"max_miss_cs "<< max_cost_cs<<endl;
+                            }
+                            Cstat[chunk].cache_cost=max_cost_cs;
+                            //cout<<"max_cost_cs "<<max_cost_cs<<endl;
                             //double a =pow((1+1/Cstat[chunk].cache_cost),Cstat[chunk].cache_cost)-1;
                             Cstat[chunk].x +=Cstat[chunk].miss_cost+(1/Cstat[chunk].cache_cost);//(1+Cstat[chunk].miss_cost)///(1/a*Cstat[chunk].cache_cost);
                             if(Cstat[chunk].x>=Cstat[chunk].uni){
@@ -330,6 +341,7 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
     }
 
     Rstat[chunk].cache_miss +=1;
+
 
     if(Rstat[chunk].cache_miss>1){// to update the request cost when the Interest is arrrived at the router
 
@@ -356,7 +368,13 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
             }
         }else{//rcs is free
             if(Rstat[chunk].x<1){
-                Rstat[chunk].cache_cost=50;
+                if(max_miss_rcs<Rstat[chunk].cache_miss){
+                    double rcs_size=RContentStore->get_size();
+                    max_miss_rcs=Rstat[chunk].cache_miss;
+                    max_cost_rcs= pow(max_miss_rcs/(rcs_size*0.01),max_miss_rcs);//150;//ceil(pow(2,max_miss_rcs/rcs_size));
+                   // cout<<"max_miss_rcs "<<max_cost_rcs <<endl;
+                }
+                Rstat[chunk].cache_cost=max_cost_rcs;
                 //double a =pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;
                 //cout<<"a "<<a<<endl;
                 Rstat[chunk].x +=Rstat[chunk].miss_cost+(1/Rstat[chunk].cache_cost);//(Rstat[chunk].x*(1+(1/Rstat[chunk].cache_cost)))+(1/(a*Rstat[chunk].cache_cost));

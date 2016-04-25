@@ -156,8 +156,8 @@ class core_layer : public abstract_node{
         int sigma;
         simtime_t old_Dalta;
         simtime_t tmp_pre_miss;
-        double req_cost, max_req_cost, avg_threshold;
-        double req_cost_rcs, max_req_cost_rcs, avg_threshold_rcs;
+        double req_cost, max_req_cost, avg_threshold,max_miss_cs,max_cost_cs;
+        double req_cost_rcs, max_req_cost_rcs, avg_threshold_rcs,max_miss_rcs,max_cost_rcs;
 
 
 		//<aa> number of chunks satisfied by the repository attached to this node</aa>
