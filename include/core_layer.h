@@ -115,6 +115,7 @@ class core_layer : public abstract_node{
 		//</aa>
 
 		//Custom functions
+		virtual void handle_timers(cMessage*);
 		void handle_interest(ccn_interest *);
 		void handle_interest_AR(ccn_interest *);
 		void handle_interest_NAR(ccn_interest *);
@@ -140,7 +141,7 @@ class core_layer : public abstract_node{
 
 
     private:
-
+		cMessage *timer;
 		unsigned long max_pit;
 		unsigned short nodes;
 		unsigned int my_bitmask;
@@ -156,10 +157,10 @@ class core_layer : public abstract_node{
         int sigma;
         simtime_t old_Dalta;
         simtime_t tmp_pre_miss;
-        double req_cost, max_req_cost, avg_threshold,max_miss_cs,max_cost_cs;
-        double req_cost_rcs, max_req_cost_rcs, avg_threshold_rcs,max_miss_rcs,max_cost_rcs;
+        double req_cost, max_req_cost, avg_threshold,max_miss_cs,max_cost_cs,arrival_cs;
+        double req_cost_rcs, max_req_cost_rcs, avg_threshold_rcs,max_miss_rcs,max_cost_rcs,arrival_rcs;
 
-
+        simtime_t check_time;
 		//<aa> number of chunks satisfied by the repository attached to this node</aa>
 		int repo_load; 
 	

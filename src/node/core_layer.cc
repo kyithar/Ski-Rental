@@ -58,6 +58,10 @@ void  core_layer::initialize(){
     max_miss_rcs=0;
     max_cost_cs=0;
     max_cost_rcs=0;
+    arrival_cs=0;
+    arrival_rcs=0;
+
+
 
 
     cTopology topo;
@@ -69,24 +73,24 @@ void  core_layer::initialize(){
     if(node->getCluster_id()==0){
            cluster_id=0;
            CHring=CH0;
-          // total_cache_size=Tsize[0];
+          total_cache_size=Tsize[0];
                }
     if(node->getCluster_id()==1){
            cluster_id=1;
            CHring=CH1;
-           //total_cache_size=Tsize[1];
+           total_cache_size=Tsize[1];
                      }
     if(node->getCluster_id()==2){
            cluster_id=2;
            CHring=CH2;
-          // total_cache_size=Tsize[2];
+           total_cache_size=Tsize[2];
                           }
     if(node->getCluster_id()==3){
            cluster_id=3;
            CHring=CH3;
-          // total_cache_size=Tsize[3];
+           total_cache_size=Tsize[3];
                           }
-   // cout<<"total cache size "<<total_cache_size<<endl;
+    //cout<<"total cache size "<<total_cache_size<<endl;
 
     if(getIndex()==0){ core_check=1;}//to identify the core routers
 
@@ -133,6 +137,11 @@ void  core_layer::initialize(){
 
     //<aa>
     clear_stat();
+    check_time=1;
+    //arrival = new cMessage("arrival", ARRIVAL );
+    timer = new cMessage("timer", TIMER);
+    //scheduleAt( simTime() + exponential(1./lambda), arrival);
+    scheduleAt( simTime() + check_time, timer  );
 
 
 }
@@ -144,8 +153,17 @@ void  core_layer::initialize(){
  * determining if it is an interest or a data packet (the corresponding
  * counters are increased). The two auxiliary functions handle_interest() and
  * handle_data() have the task of dealing with interest and data processing.
+ *
+ *
  */
+
+
+
 void core_layer::handleMessage(cMessage *in){
+    if (in->isSelfMessage()){
+        handle_timers(in);
+        return;
+    }
     //cout<<getIndex()<<"_C_"<<ContentStore->get_size()<<endl;
    // cout<<getIndex()<<"_R_"<<RContentStore->get_size()<<endl;
     current_r = getParentModule()->getIndex();//get router name
@@ -251,6 +269,12 @@ void core_layer::finish(){
 
 }
 
+void core_layer::handle_timers(cMessage *timer){
+arrival_cs=0;
+arrival_rcs=0;
+scheduleAt( simTime() + check_time, timer );
+}
+
 void core_layer::handle_interest(ccn_interest *int_msg){
 
 if(current_r == 0){int_msg->setI_type(0);}//when the core router receives the Interest, change the Interest type to "original" Interest.
@@ -277,6 +301,8 @@ if(current_r==1||current_r==6 ||current_r==11){
 }
 
 void core_layer::handle_statCS(ccn_interest *int_msg){
+    arrival_cs +=1;
+    //cout<<arrival_cs<<endl;
     chunk_t chunk = int_msg->getChunk();//get the chunk number
     unordered_map <chunk_t, cstat_entry >::iterator CstatIt = Cstat.find(chunk);
     if(CstatIt==Cstat.end()){
@@ -290,7 +316,7 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                     Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
                     Cstat[chunk].Delta += Cstat[chunk].miss_time -Cstat[chunk].pre_miss_t;
                     Cstat[chunk].cumu_inter=Cstat[chunk].Delta/(Cstat[chunk].cache_miss-1);
-                    Cstat[chunk].miss_cost +=Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
+                    Cstat[chunk].miss_cost =Cstat[chunk].cache_miss/Cstat[chunk].cumu_inter;
 
                  }else {
                      Cstat[chunk].miss_time=(simTime().dbl()*1000.0);
@@ -309,11 +335,12 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
                         }
                     }else{//rcs is free
                         if(Cstat[chunk].x<1){
-                            if(max_miss_cs<Cstat[chunk].cache_miss){
+                            if(max_miss_cs<arrival_cs){
                                 double cs_size=ContentStore->get_size();
-                                max_miss_cs=Cstat[chunk].cache_miss;
-                                max_cost_cs= pow(max_miss_cs/(cs_size*0.01),max_miss_cs);//((max_miss_cs/(cs_size*0.01))*(max_miss_cs+1));//ceil(pow(max_miss_cs/cs_size,max_miss_cs));
-                                cout<<"max_miss_cs "<< max_cost_cs<<endl;
+                                max_miss_cs=arrival_cs;
+                                //max_cost_cs=(arrival_cs*ceil(exp(1/(cs_size*0.01))));//pow(max_miss_cs/(cs_size*0.01),max_miss_cs);//((max_miss_cs/(cs_size*0.01))*(max_miss_cs+1));//ceil(pow(max_miss_cs/cs_size,max_miss_cs));
+                                max_cost_cs= arrival_cs*floor(total_cache_size/cs_size);
+                                //cout<<"max_miss_cs "<< (exp(1/(cs_size*0.00001)))<<endl;
                             }
                             Cstat[chunk].cache_cost=max_cost_cs;
                             //cout<<"max_cost_cs "<<max_cost_cs<<endl;
@@ -334,6 +361,7 @@ void core_layer::handle_statCS(ccn_interest *int_msg){
 }
 
 void core_layer::handle_statRCS(ccn_interest *int_msg){
+    arrival_rcs +=1;
     chunk_t chunk = int_msg->getChunk();//get the chunk number
     unordered_map <chunk_t, rcs_cstat_entry >::iterator RstatIt = Rstat.find(chunk);
     if(RstatIt==Rstat.end()){
@@ -349,7 +377,7 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
         Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
         Rstat[chunk].Delta += Rstat[chunk].miss_time -Rstat[chunk].pre_miss_t;
         Rstat[chunk].cumu_inter=Rstat[chunk].Delta/(Rstat[chunk].cache_miss-1);
-        Rstat[chunk].miss_cost +=Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
+        Rstat[chunk].miss_cost =Rstat[chunk].cache_miss/Rstat[chunk].cumu_inter;
 
      }else {
          Rstat[chunk].miss_time=(simTime().dbl()*1000.0);
@@ -368,11 +396,12 @@ void core_layer::handle_statRCS(ccn_interest *int_msg){
             }
         }else{//rcs is free
             if(Rstat[chunk].x<1){
-                if(max_miss_rcs<Rstat[chunk].cache_miss){
+                if(max_miss_rcs<arrival_rcs){
                     double rcs_size=RContentStore->get_size();
-                    max_miss_rcs=Rstat[chunk].cache_miss;
-                    max_cost_rcs= pow(max_miss_rcs/(rcs_size*0.01),max_miss_rcs);//150;//ceil(pow(2,max_miss_rcs/rcs_size));
+                    max_miss_rcs=arrival_rcs;
+                    max_cost_rcs= arrival_rcs*floor(total_cache_size/rcs_size);//pow(max_miss_rcs/(rcs_size*0.01),max_miss_rcs);//150;//ceil(pow(2,max_miss_rcs/rcs_size));
                    // cout<<"max_miss_rcs "<<max_cost_rcs <<endl;
+                    cout<<"max_miss_rcs "<< max_cost_rcs<<endl;
                 }
                 Rstat[chunk].cache_cost=max_cost_rcs;
                 //double a =pow((1+1/Rstat[chunk].cache_cost),Rstat[chunk].cache_cost)-1;

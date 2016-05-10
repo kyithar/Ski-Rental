@@ -45,7 +45,7 @@ boost::unordered_map<int,int>  CH0;
 boost::unordered_map<int,int>  CH1;
 boost::unordered_map<int,int>  CH2;
 boost::unordered_map<int,int>  CH3;
-
+boost::unordered_map <int, int > Tsize;
 
 vector<file> content_distribution::catalog;
 zipf_distribution  content_distribution::zipf;
@@ -595,11 +595,11 @@ void content_distribution::weighted_cache(){// cache storage size aware key rang
               CLUCOUNT[node->getCluster_id()].total_c += cacheini[i->first];
               }
 
-              //for (int d = 0; d < num_of_cluster; d++){
-              //    Tsize[d]=CLUCOUNT[d].total_c;
-             // cout<<"length "<<CLUCOUNT[d].len<<endl;
+              for (int d = 0; d < num_of_cluster; d++){
+                  Tsize[d]=CLUCOUNT[d].total_c;
+              //cout<<"length "<<CLUCOUNT[d].len<<endl;
              // cout<<"total cache size  "<<CLUCOUNT[d].total_c<<endl;
-             // }
+              }
 
 
               for (unordered_map <int, int >::iterator  i = cacheini.begin();i != cacheini.end();i++){
